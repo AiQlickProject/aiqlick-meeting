@@ -10,7 +10,7 @@ ARG JITSI_WEB_TAG=stable-9823
 # =============================================================================
 # Stage 1: Build the custom Jitsi Meet frontend
 # =============================================================================
-FROM node:20-slim AS builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
