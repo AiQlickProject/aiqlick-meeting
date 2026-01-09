@@ -1,0 +1,70 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Node modules (will be installed fresh in container)
+node_modules
+
+# Build outputs (will be rebuilt in container)
+build
+libs
+
+# IDE and editor files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed in image)
+doc
+*.md
+!README.md
+
+# Test files
+tests
+*.test.js
+*.spec.js
+
+# Development configs
+.devcontainer
+.editorconfig
+.eslintignore
+.eslintrc.js
+.luacheckrc
+.watchmanconfig
+
+# Mobile app files (not needed for web)
+android
+ios
+react-native-sdk
+*.android.js
+*.ios.js
+index.android.js
+index.ios.js
+metro.config.js
+react-native.config.js
+tsconfig.native.json
+Gemfile
+Gemfile.lock
+twa
+
+# CI files (not needed in image)
+.github
+
+# Large demo image
+readme-img1.png
+
+# Debian packaging
+debian
+
+# Patches (applied during npm install)
+patches
+
+# Metadata
+metadata
