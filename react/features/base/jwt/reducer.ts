@@ -2,7 +2,7 @@ import PersistenceRegistry from '../redux/PersistenceRegistry';
 import ReducerRegistry from '../redux/ReducerRegistry';
 import { equals } from '../redux/functions';
 
-import { SET_DELAYED_LOAD_OF_AVATAR_URL, SET_JWT, SET_KNOWN_AVATAR_URL } from './actionTypes';
+import { SET_DELAYED_LOAD_OF_AVATAR_URL, SET_JWT, SET_KNOWN_AVATAR_URL, SET_PENDING_FEATURES } from './actionTypes';
 import logger from './logger';
 
 export interface IJwtState {
@@ -13,6 +13,11 @@ export interface IJwtState {
     group?: string;
     jwt?: string;
     knownAvatarUrl?: string;
+    /**
+     * Features from JWT that couldn't be applied because local participant
+     * didn't exist yet. Will be applied when local participant joins.
+     */
+    pendingFeatures?: Record<string, boolean | string>;
     server?: string;
     tenant?: string;
     user?: {
@@ -66,6 +71,11 @@ ReducerRegistry.register<IJwtState>(
             return {
                 ...state,
                 knownAvatarUrl: action.avatarUrl
+            };
+        case SET_PENDING_FEATURES:
+            return {
+                ...state,
+                pendingFeatures: action.features
             };
         }
 

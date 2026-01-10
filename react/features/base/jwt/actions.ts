@@ -1,4 +1,4 @@
-import { SET_DELAYED_LOAD_OF_AVATAR_URL, SET_JWT, SET_KNOWN_AVATAR_URL } from './actionTypes';
+import { SET_DELAYED_LOAD_OF_AVATAR_URL, SET_JWT, SET_KNOWN_AVATAR_URL, SET_PENDING_FEATURES } from './actionTypes';
 
 /**
  * Sets an avatar URL for delayed loading.
@@ -45,5 +45,22 @@ export function setKnownAvatarUrl(avatarUrl: string) {
     return {
         type: SET_KNOWN_AVATAR_URL,
         avatarUrl
+    };
+}
+
+/**
+ * Stores pending JWT features that couldn't be applied because local
+ * participant didn't exist yet.
+ *
+ * @param {Record<string, boolean | string>} [features] - The features to store.
+ * @returns {{
+ *     type: SET_PENDING_FEATURES,
+ *     features: Record<string, boolean | string> | undefined
+ * }}
+ */
+export function setPendingFeatures(features?: Record<string, boolean | string>) {
+    return {
+        type: SET_PENDING_FEATURES,
+        features
     };
 }

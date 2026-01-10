@@ -8,14 +8,15 @@ import { getCurrentConference } from '../conference/functions';
 import { SET_CONFIG } from '../config/actionTypes';
 import { CONNECTION_ESTABLISHED, SET_LOCATION_URL } from '../connection/actionTypes';
 import { participantUpdated } from '../participants/actions';
+import { PARTICIPANT_JOINED } from '../participants/actionTypes';
 import { getLocalParticipant } from '../participants/functions';
 import { IParticipant } from '../participants/types';
 import MiddlewareRegistry from '../redux/MiddlewareRegistry';
 import StateListenerRegistry from '../redux/StateListenerRegistry';
 import { parseURIString } from '../util/uri';
 
-import { SET_JWT } from './actionTypes';
-import { setDelayedLoadOfAvatarUrl, setJWT, setKnownAvatarUrl } from './actions';
+import { SET_JWT, SET_PENDING_FEATURES } from './actionTypes';
+import { setDelayedLoadOfAvatarUrl, setJWT, setKnownAvatarUrl, setPendingFeatures } from './actions';
 import { parseJWTFromURLParams } from './functions';
 import logger from './logger';
 
@@ -59,6 +60,13 @@ MiddlewareRegistry.register(store => next => action => {
     }
     case SET_JWT:
         return _setJWT(store, next, action);
+    case PARTICIPANT_JOINED: {
+        // Apply pending JWT features when local participant is created
+        if (action.participant?.local) {
+            return _applyPendingFeatures(store, next, action);
+        }
+        break;
+    }
     }
 
     return next(action);
@@ -79,9 +87,18 @@ function _overwriteLocalParticipant(
         { dispatch, getState }: IStore,
         { avatarURL, email, id: jwtId, name, features }:
         { avatarURL?: string; email?: string; features?: any; id?: string; name?: string; }) {
-    let localParticipant;
+    const localParticipant = getLocalParticipant(getState);
 
-    if ((avatarURL || email || name || features) && (localParticipant = getLocalParticipant(getState))) {
+    // If we have features but no local participant yet, store them as pending
+    // They will be applied when the local participant joins
+    if (features && !localParticipant) {
+        logger.info('Local participant not ready, storing JWT features as pending');
+        dispatch(setPendingFeatures(features));
+
+        return;
+    }
+
+    if ((avatarURL || email || name || features) && localParticipant) {
         const newProperties: IParticipant = {
             id: localParticipant.id,
             local: true
@@ -104,6 +121,40 @@ function _overwriteLocalParticipant(
         }
         dispatch(participantUpdated(newProperties));
     }
+}
+
+/**
+ * Applies pending JWT features to the local participant when they join.
+ *
+ * @param {Store} store - The redux store.
+ * @param {Function} next - The redux dispatch function.
+ * @param {Action} action - The PARTICIPANT_JOINED action.
+ * @private
+ * @returns {Object} The result of next(action).
+ */
+function _applyPendingFeatures({ dispatch, getState }: IStore, next: Function, action: AnyAction) {
+    const result = next(action);
+
+    const state = getState();
+    const pendingFeatures = state['features/base/jwt'].pendingFeatures;
+
+    if (pendingFeatures && Object.keys(pendingFeatures).length > 0) {
+        const localParticipant = getLocalParticipant(state);
+
+        if (localParticipant) {
+            logger.info('Applying pending JWT features to local participant', pendingFeatures);
+            dispatch(participantUpdated({
+                id: localParticipant.id,
+                local: true,
+                features: pendingFeatures
+            }));
+
+            // Clear pending features
+            dispatch(setPendingFeatures(undefined));
+        }
+    }
+
+    return result;
 }
 
 /**

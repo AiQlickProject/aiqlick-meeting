@@ -28,3 +28,14 @@ export const SET_JWT = 'SET_JWT';
  * }
  */
 export const SET_KNOWN_AVATAR_URL = 'SET_KNOWN_AVATAR_URL';
+
+/**
+ * The type of redux action which stores pending JWT features that couldn't
+ * be applied because local participant didn't exist yet.
+ *
+ * {
+ *     type: SET_PENDING_FEATURES,
+ *     features: Record<string, boolean | string>
+ * }
+ */
+export const SET_PENDING_FEATURES = 'SET_PENDING_FEATURES';
