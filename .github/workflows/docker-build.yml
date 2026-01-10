@@ -80,14 +80,16 @@ jobs:
           echo "🔧 Updating jitsi-meet values.yaml..."
           cd gitops/k8s/jitsi-meet
 
-          # Update the web image to use custom image
+          # Update the web image to use custom image with 'latest' tag
+          # Using 'latest' ensures Kubernetes pulls the newest image on restart
           yq eval '.jitsi-meet.web.image.repository = "${{ env.IMAGE_NAME }}"' -i values.yaml
-          yq eval '.jitsi-meet.web.image.tag = "${{ needs.build-and-push.outputs.commit-sha }}"' -i values.yaml
+          yq eval '.jitsi-meet.web.image.tag = "latest"' -i values.yaml
 
-          # Add deployment annotation for traceability
-          yq eval '.metadata.annotations = (.metadata.annotations // {})' -i values.yaml
-          yq eval ".metadata.annotations[\"ci-last-updated\"] = \"$DATE\"" -i values.yaml
-          yq eval ".metadata.annotations[\"git-commit\"] = \"${{ needs.build-and-push.outputs.commit-sha }}\"" -i values.yaml
+          # Add deployment annotation with timestamp to trigger pod restart
+          # This ensures K8s detects a change even when using 'latest' tag
+          yq eval '.jitsi-meet.web.podAnnotations = (.jitsi-meet.web.podAnnotations // {})' -i values.yaml
+          yq eval ".jitsi-meet.web.podAnnotations[\"ci-last-updated\"] = \"$DATE\"" -i values.yaml
+          yq eval ".jitsi-meet.web.podAnnotations[\"git-commit\"] = \"${{ needs.build-and-push.outputs.commit-sha }}\"" -i values.yaml
 
           echo "📋 Showing updated web image section:"
           yq eval '.jitsi-meet.web.image' values.yaml
