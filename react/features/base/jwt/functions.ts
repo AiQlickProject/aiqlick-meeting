@@ -55,6 +55,16 @@ export function isJwtFeatureEnabled(
 ) {
     let { features } = getLocalParticipant(state) || {};
 
+    // Also check pendingFeatures as fallback - features may not be applied yet due to race condition
+    // where CONFERENCE_JOINED fires before participantUpdated completes
+    if (typeof features === 'undefined' || Object.keys(features).length === 0) {
+        const pendingFeatures = state['features/base/jwt']?.pendingFeatures;
+
+        if (pendingFeatures && Object.keys(pendingFeatures).length > 0) {
+            features = pendingFeatures;
+        }
+    }
+
     if (typeof features === 'undefined' && isVpaasMeeting(state)) {
         // for vpaas the backend is always initialized with empty features if those are missing
         features = {};
