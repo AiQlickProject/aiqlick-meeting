@@ -1,7 +1,7 @@
 import { AnyAction } from 'redux';
 
 import { IStore } from '../app/types';
-import { ENDPOINT_MESSAGE_RECEIVED, NON_PARTICIPANT_MESSAGE_RECEIVED } from '../base/conference/actionTypes';
+import { CONFERENCE_JOINED, ENDPOINT_MESSAGE_RECEIVED, NON_PARTICIPANT_MESSAGE_RECEIVED } from '../base/conference/actionTypes';
 import { MEET_FEATURES } from '../base/jwt/constants';
 import { isJwtFeatureEnabled } from '../base/jwt/functions';
 import JitsiMeetJS from '../base/lib-jitsi-meet';
@@ -77,6 +77,23 @@ const STABLE_TRANSCRIPTION_FACTOR = 0.85;
  */
 MiddlewareRegistry.register(store => next => action => {
     switch (action.type) {
+    case CONFERENCE_JOINED: {
+        const state = store.getState();
+        const { transcription } = state['features/base/config'];
+
+        // Auto-start transcription when meeting joins if configured
+        if (transcription?.autoStartTranscription
+            && transcription?.enabled
+            && isJwtFeatureEnabled(state, MEET_FEATURES.TRANSCRIPTION, false)) {
+            const preferredLanguage = transcription?.preferredLanguage || 'en';
+
+            // Dispatch after a short delay to ensure conference is fully initialized
+            setTimeout(() => {
+                store.dispatch(setRequestingSubtitles(true, true, `translation-languages:${preferredLanguage}`));
+            }, 1000);
+        }
+        break;
+    }
     case ENDPOINT_MESSAGE_RECEIVED:
     case NON_PARTICIPANT_MESSAGE_RECEIVED:
         return _endpointMessageReceived(store, next, action);

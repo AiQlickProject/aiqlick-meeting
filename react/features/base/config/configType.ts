@@ -635,6 +635,7 @@ export interface IConfig {
     transcribingEnabled?: boolean;
     transcription?: {
         autoCaptionOnTranscribe?: boolean;
+        autoStartTranscription?: boolean;
         autoTranscribeOnRecord?: boolean;
         disableClosedCaptions?: boolean;
         enabled?: boolean;
