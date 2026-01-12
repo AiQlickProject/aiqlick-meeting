@@ -48,10 +48,46 @@
             const shouldRegisterWorker = !isElectron && !isEmbedded() && 'serviceWorker' in navigator;
 
             if (shouldRegisterWorker) {
+                // Force update check - clear caches if version changed
+                (async function checkForUpdates() {
+                    try {
+                        const response = await fetch('pwa-worker.js?_=' + Date.now(), { cache: 'no-store' });
+                        const text = await response.text();
+                        const versionMatch = text.match(/BUILD_VERSION\s*=\s*['"]([^'"]+)['"]/);
+                        const serverVersion = versionMatch ? versionMatch[1] : null;
+                        const storedVersion = localStorage.getItem('aiqlick-app-version');
+
+                        if (serverVersion && storedVersion && serverVersion !== storedVersion) {
+                            console.log('New version detected:', serverVersion, '(was:', storedVersion, ')');
+                            // Clear all caches
+                            if ('caches' in window) {
+                                const cacheNames = await caches.keys();
+                                await Promise.all(cacheNames.map(name => caches.delete(name)));
+                                console.log('Cleared all caches');
+                            }
+                            // Unregister old service workers
+                            const registrations = await navigator.serviceWorker.getRegistrations();
+                            await Promise.all(registrations.map(reg => reg.unregister()));
+                            console.log('Unregistered service workers');
+                            // Store new version and reload
+                            localStorage.setItem('aiqlick-app-version', serverVersion);
+                            window.location.reload(true);
+                            return;
+                        }
+                        if (serverVersion) {
+                            localStorage.setItem('aiqlick-app-version', serverVersion);
+                        }
+                    } catch (e) {
+                        console.log('Version check failed:', e);
+                    }
+                })();
+
                 navigator.serviceWorker
                     .register(window.location.origin + contextRoot(window.location.pathname) + 'pwa-worker.js')
                     .then(reg => {
                         console.log('Service worker registered.', reg);
+                        // Force immediate update check
+                        reg.update();
                     })
                     .catch(err => {
                         console.log(err);
