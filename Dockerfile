@@ -6,11 +6,16 @@
 
 # Build argument for base image tag (allows pinning to specific version)
 ARG JITSI_WEB_TAG=stable-9823
+# Build version for cache busting (set by CI/CD)
+ARG BUILD_VERSION=dev
 
 # =============================================================================
 # Stage 1: Build the custom Jitsi Meet frontend
 # =============================================================================
 FROM node:22-slim AS builder
+
+# Re-declare ARG after FROM to make it available in this stage
+ARG BUILD_VERSION
 
 WORKDIR /app
 
@@ -31,6 +36,9 @@ RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
+
+# Inject build version into pwa-worker.js for cache busting
+RUN sed -i "s/__BUILD_VERSION__/${BUILD_VERSION}/g" pwa-worker.js
 
 # Build the application using the Makefile
 # This compiles webpack bundles and deploys assets to libs/

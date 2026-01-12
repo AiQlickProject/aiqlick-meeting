@@ -53,6 +53,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             JITSI_WEB_TAG=stable-9823
+            BUILD_VERSION=${{ steps.image-info.outputs.sha }}
 
   deploy-to-gitops:
     needs: build-and-push

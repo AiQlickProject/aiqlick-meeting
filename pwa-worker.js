@@ -11,7 +11,9 @@ Copyright 2015, 2019, 2020 Google LLC. All Rights Reserved.
  limitations under the License.
 */
 
-const CACHE_NAME = 'offline';
+// BUILD_VERSION is replaced by CI/CD during build, or use timestamp as fallback
+const BUILD_VERSION = '__BUILD_VERSION__';
+const CACHE_NAME = `aiqlick-meeting-${BUILD_VERSION}`;
 
 // Customize this with a different URL if needed.
 const OFFLINE_URL = 'static/offline.html';
@@ -36,6 +38,23 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
     event.waitUntil(
     (async () => {
+        // Delete all old caches that don't match current version
+        const cacheNames = await caches.keys();
+        await Promise.all(
+            cacheNames
+                .filter(name => name.startsWith('aiqlick-meeting-') && name !== CACHE_NAME)
+                .map(name => {
+                    console.log('Deleting old cache:', name);
+                    return caches.delete(name);
+                })
+        );
+
+        // Also delete legacy 'offline' cache if it exists
+        if (cacheNames.includes('offline')) {
+            console.log('Deleting legacy offline cache');
+            await caches.delete('offline');
+        }
+
         // Enable navigation preload if it's supported.
         // See https://developers.google.com/web/updates/2017/02/navigation-preload
         if ('navigationPreload' in self.registration) {
