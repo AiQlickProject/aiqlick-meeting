@@ -1,6 +1,8 @@
 import * as amplitude from '@amplitude/analytics-react-native';
+import { Identify } from '@amplitude/analytics-react-native';
 
 export default amplitude;
+export { Identify };
 
 /**
  * Initializes the Amplitude instance.

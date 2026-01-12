@@ -1,10 +1,8 @@
-import { Identify } from '@amplitude/analytics-core';
-
 import logger from '../logger';
 
 import AbstractHandler, { IEvent } from './AbstractHandler';
 import { fixDeviceID } from './amplitude/fixDeviceID';
-import amplitude, { initAmplitude } from './amplitude/lib';
+import amplitude, { Identify, initAmplitude } from './amplitude/lib';
 
 /**
  * Analytics handler for Amplitude.

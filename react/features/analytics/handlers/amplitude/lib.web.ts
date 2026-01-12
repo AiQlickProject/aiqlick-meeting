@@ -1,8 +1,9 @@
-import { createInstance } from '@amplitude/analytics-browser';
+import { Identify, createInstance } from '@amplitude/analytics-browser';
 
 const amplitude = createInstance();
 
 export default amplitude;
+export { Identify };
 
 /**
  * Initializes the Amplitude instance.
