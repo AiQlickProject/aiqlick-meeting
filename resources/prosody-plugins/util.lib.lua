@@ -500,7 +500,7 @@ function is_sip_jigasi(stanza)
         return false;
     end
 
-    return stanza:get_child('initiator', 'http://jitsi.org/protocol/jigasi');
+    return stanza:get_child('initiator', 'http://aiqlick.com/protocol/jigasi');
 end
 
 -- This requires presence stanza being passed
@@ -516,7 +516,7 @@ function is_transcriber_jigasi(stanza)
 
     for i = 1, #features do
         local feature = features[i];
-        if feature.attr and feature.attr.var and feature.attr.var == 'http://jitsi.org/protocol/transcriber' then
+        if feature.attr and feature.attr.var and feature.attr.var == 'http://aiqlick.com/protocol/transcriber' then
             return true;
         end
     end
@@ -554,7 +554,7 @@ function is_sip_jibri_join(stanza)
 
     for i = 1, #features do
         local feature = features[i];
-        if feature.attr and feature.attr.var and feature.attr.var == "http://jitsi.org/protocol/jibri" then
+        if feature.attr and feature.attr.var and feature.attr.var == "http://aiqlick.com/protocol/jibri" then
             if get_sip_jibri_email_prefix(email) then
                 module:log("debug", "Occupant with email %s is a sip jibri ", email);
                 return true;

@@ -39,7 +39,7 @@ local process_host_module = util.process_host_module;
 
 local BREAKOUT_ROOMS_IDENTITY_TYPE = 'breakout_rooms';
 -- Available breakout room functionality
-local RENAME_FEATURE = 'http://jitsi.org/protocol/breakout_rooms#rename';
+local RENAME_FEATURE = 'http://aiqlick.com/protocol/breakout_rooms#rename';
 -- only send at most this often updates on breakout rooms to avoid flooding.
 local BROADCAST_ROOMS_INTERVAL = .3;
 -- close conference after this amount of seconds if all leave.
@@ -93,7 +93,7 @@ end
 
 function send_json_msg(to_jid, json_msg)
     local stanza = st.message({ from = breakout_rooms_muc_component_config; to = to_jid; })
-         :tag('json-message', { xmlns = 'http://jitsi.org/jitmeet' }):text(json_msg):up();
+         :tag('json-message', { xmlns = 'http://aiqlick.com/jitmeet' }):text(json_msg):up();
     module:send(stanza);
 end
 

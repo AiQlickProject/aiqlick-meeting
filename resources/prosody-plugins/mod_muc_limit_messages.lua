@@ -35,7 +35,7 @@ function on_message(event)
             return;
         else
             -- we want to pass through only polls answers
-            local json_data = stanza:get_child_text('json-message', 'http://jitsi.org/jitmeet');
+            local json_data = stanza:get_child_text('json-message', 'http://aiqlick.com/jitmeet');
             if json_data and string.find(json_data, 'answer-poll', 1, true) then
                 return;
             end

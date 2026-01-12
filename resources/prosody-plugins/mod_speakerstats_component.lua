@@ -58,7 +58,7 @@ function on_message(event)
     end
 
     local speakerStats
-        = event.stanza:get_child('speakerstats', 'http://jitsi.org/jitmeet');
+        = event.stanza:get_child('speakerstats', 'http://aiqlick.com/jitmeet');
     if speakerStats then
         local roomAddress = speakerStats.attr.room;
         local silence = speakerStats.attr.silence == 'true';
@@ -100,7 +100,7 @@ function on_message(event)
         room.speakerStats['dominantSpeakerId'] = occupant.jid;
     end
 
-    local newFaceLandmarks = event.stanza:get_child('faceLandmarks', 'http://jitsi.org/jitmeet');
+    local newFaceLandmarks = event.stanza:get_child('faceLandmarks', 'http://aiqlick.com/jitmeet');
 
     if newFaceLandmarks then
         local roomAddress = newFaceLandmarks.attr.room;
@@ -269,7 +269,7 @@ function occupant_joined(event)
                     local stanza = st.message({
                         from = module.host;
                         to = occupant.jid; })
-                    :tag("json-message", {xmlns='http://jitsi.org/jitmeet'})
+                    :tag("json-message", {xmlns='http://aiqlick.com/jitmeet'})
                     :text(json_msg_str):up();
 
                     room:route_stanza(stanza);

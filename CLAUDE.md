@@ -262,6 +262,6 @@ react/features/sample/
 
 ## External Resources
 - [Jitsi Handbook](https://jitsi.github.io/handbook/) - Comprehensive documentation
-- [Community Forum](https://community.jitsi.org/) - Ask questions and get support
+- [Community Forum](https://community.aiqlick.com/) - Ask questions and get support
 - [Architecture Guide](https://jitsi.github.io/handbook/docs/architecture) - System overview
 - [Contributing Guidelines](https://jitsi.github.io/handbook/docs/dev-guide/contributing) - Detailed contribution process

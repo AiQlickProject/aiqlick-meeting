@@ -200,8 +200,8 @@ function _checkIframe(state: IReduxState, dispatch: IStore['dispatch']) {
         let domain = '';
 
         const mapping: Record<string, string> = {
-            '8x8.vc': 'https://jaas.8x8.vc',
-            'meet.jit.si': 'https://jitsi.org/jaas'
+            "meet.aiqlick.com": "https://aiqlick.com/jaas",
+            "aiqlick.com": "https://aiqlick.com/jaas",
         };
 
         const jaasDomain = mapping[hostname];

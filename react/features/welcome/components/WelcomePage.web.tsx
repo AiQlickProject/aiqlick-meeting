@@ -201,7 +201,17 @@ class WelcomePage extends AbstractWelcomePage<IProps> {
                 className = { `welcome ${contentClassName} ${footerClassName}` }
                 id = 'welcome_page'>
                 <div className = 'header'>
-                    <div className = 'header-image' />
+                    <video
+                        autoPlay
+                        className = 'header-video-background'
+                        loop
+                        muted
+                        playsInline>
+                        <source
+                            src = 'images/Interview.mp4'
+                            type = 'video/mp4' />
+                    </video>
+                    <div className = 'header-video-overlay' />
                     <div className = 'header-container'>
                         <div className = 'header-watermark-container'>
                             <div className = 'welcome-watermark'>

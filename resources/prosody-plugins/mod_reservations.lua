@@ -363,7 +363,7 @@ function RoomReservation:reply_with_error(event, error_code, error_text)
             :tag("error", { type="cancel" })
                 :tag("service-unavailable", { xmlns="urn:ietf:params:xml:ns:xmpp-stanzas" }):up()
                 :tag("text", { xmlns="urn:ietf:params:xml:ns:xmpp-stanzas" }):text(error_text):up()
-                :tag("reservation-error", { xmlns="http://jitsi.org/protocol/focus", ["error-code"]=tostring(error_code) })
+                :tag("reservation-error", { xmlns="http://aiqlick.com/protocol/focus", ["error-code"]=tostring(error_code) })
     );
 end
 
@@ -586,7 +586,7 @@ module:hook("pre-iq/host", function(event)
         return;  -- not IQ for jicofo. Ignore this event.
     end
 
-    local conference = stanza:get_child('conference', 'http://jitsi.org/protocol/focus');
+    local conference = stanza:get_child('conference', 'http://aiqlick.com/protocol/focus');
     if conference == nil then
         return; -- not Conference IQ. Ignore.
     end

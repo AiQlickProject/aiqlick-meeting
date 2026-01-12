@@ -15,8 +15,8 @@
         width: 100%;
 
         &.primary {
-            background: #0376DA;
-            border: 1px solid #0376DA;
+            background: $aiqlickPrimary;
+            border: 1px solid $aiqlickPrimary;
         }
 
         &.secondary {
@@ -29,6 +29,7 @@
             font-size: 0.75rem;
             margin: 0;
             padding: 0;
+            color: $aiqlickTextDark;
         }
 
         &.disabled {
@@ -56,15 +57,22 @@
             width: 36px;
 
             &:hover {
-                background-color: #0262B6;
+                background-color: $aiqlickSecondary;
             }
 
             svg {
                 pointer-events: none;
+                fill: #fff !important;
             }
+        }
+
+        // Keep arrow icons white on dark background buttons
+        svg {
+            fill: #fff !important;
         }
     }
 
+    // Dark icons and text for light background on left panel
     #new-toolbox {
         bottom: 0;
         position: relative;
@@ -89,6 +97,109 @@
             box-sizing: border-box;
             width: auto;
         }
+
+        // Make toolbox icons dark for light background (except hangup)
+        .toolbox-icon:not(.hangup-button) {
+            background-color: rgba(44, 62, 80, 0.1) !important;
+
+            &:hover {
+                background-color: rgba(44, 62, 80, 0.2) !important;
+            }
+
+            svg {
+                fill: $aiqlickTextDark !important;
+            }
+        }
+
+        .jitsi-icon svg {
+            fill: $aiqlickTextDark !important;
+        }
+
+        // Override all SVG icon fills in toolbox (except hangup)
+        svg {
+            fill: $aiqlickTextDark !important;
+        }
+
+        // Keep hangup button red with white icon
+        .hangup-button,
+        div.hangup-button {
+            background-color: #CB2233 !important;
+
+            &:hover {
+                background-color: #E04757 !important;
+            }
+
+            svg {
+                fill: #fff !important;
+            }
+        }
+    }
+
+    // Dark text color for labels and inputs on light background
+    .device-status,
+    label {
+        color: $aiqlickTextDark !important;
+    }
+
+    // Device status text - force dark color (overrides inline styles)
+    [role="alert"],
+    [role="alert"] span {
+        color: $aiqlickTextDark !important;
+    }
+
+    // Input field styling for light background
+    input[type="text"],
+    input[type="password"],
+    input:not([type]) {
+        color: $aiqlickTextDark !important;
+        background-color: rgba(255, 255, 255, 0.9) !important;
+        border: 1px solid rgba(44, 62, 80, 0.3) !important;
+
+        &::placeholder {
+            color: rgba(44, 62, 80, 0.6) !important;
+        }
+    }
+
+    // Override all SVG icons to dark color on light background
+    .jitsi-icon svg,
+    .oAhZL svg {
+        fill: $aiqlickTextDark !important;
+    }
+
+    // Primary action buttons (Join Meeting) - keep icons white
+    .primary svg,
+    [role="button"].primary svg,
+    div.primary svg {
+        fill: #fff !important;
+    }
+
+    // Secondary action buttons - keep icons white
+    .secondary svg,
+    [role="button"].secondary svg {
+        fill: #fff !important;
+    }
+
+    // Settings button small icon (dropdown arrows) - make dark with visible background
+    .settings-button-small-icon {
+        background: rgba(44, 62, 80, 0.15) !important;
+        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1) !important;
+
+        svg {
+            fill: $aiqlickTextDark !important;
+        }
+
+        &:hover {
+            background: rgba(44, 62, 80, 0.25) !important;
+
+            svg {
+                fill: $aiqlickTextDark !important;
+            }
+        }
+    }
+
+    // Settings button container arrows
+    .settings-button-container svg {
+        fill: $aiqlickTextDark !important;
     }
 
     @media (max-width: 400px) {
@@ -106,7 +217,7 @@
 }
 
 #preview {
-    background: #040404;
+    background: #1A2556;
     display: flex;
     align-items: center;
     justify-content: center;

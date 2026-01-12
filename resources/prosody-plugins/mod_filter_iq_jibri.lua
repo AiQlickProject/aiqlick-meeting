@@ -28,7 +28,7 @@ load_config();
 module:hook("pre-iq/full", function(event)
     local stanza = event.stanza;
     if stanza.name == "iq" then
-        local jibri = stanza:get_child('jibri', 'http://jitsi.org/protocol/jibri');
+        local jibri = stanza:get_child('jibri', 'http://aiqlick.com/protocol/jibri');
         if jibri then
             local session = event.origin;
             local token = session.auth_token;

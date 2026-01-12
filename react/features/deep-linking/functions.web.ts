@@ -35,7 +35,7 @@ export function generateDeepLinkingURL(state: IReduxState) {
     // Android: use an intent link, custom schemes don't work in all browsers.
     // https://developer.chrome.com/multidevice/android/intents
     if (Platform.OS === 'android') {
-        // https://meet.jit.si/foo -> meet.jit.si/foo
+        // https://meet.aiqlick.com/foo -> meet.aiqlick.com/foo
         const url = href.replace(regex, '').substr(2);
 
         return `intent://${url}#Intent;scheme=${appScheme};package=${appPackage};end`;

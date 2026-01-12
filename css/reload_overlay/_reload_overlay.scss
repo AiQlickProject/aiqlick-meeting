@@ -19,7 +19,7 @@
     width: 180px;
 
     .progress-indicator-fill {
-        background: #0074E0;
+        background: $aiqlickPrimary;
         height: 100%;
         transition: width .5s;
     }

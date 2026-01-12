@@ -40,7 +40,7 @@ end
 -- @param json_message the message content to send
 function send_json_message(to_jid, json_message)
     local stanza = st.message({ from = module.host; to = to_jid; })
-         :tag('json-message', { xmlns = 'http://jitsi.org/jitmeet' }):text(json_message):up();
+         :tag('json-message', { xmlns = 'http://aiqlick.com/jitmeet' }):text(json_message):up();
     module:send(stanza);
 end
 

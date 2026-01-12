@@ -161,7 +161,7 @@ function filter_stanza(stanza, session)
 
     room.send_default_permissions_to[bare_to] = nil;
 
-    stanza:tag('permissions', { xmlns='http://jitsi.org/jitmeet' });
+    stanza:tag('permissions', { xmlns='http://aiqlick.com/jitmeet' });
     for k, v in pairs(session.jitsi_meet_context_features) do
         local val = tostring(v);
         stanza:tag('p', { name = k, val = val }):up();

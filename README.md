@@ -65,10 +65,10 @@ All the Jitsi Meet documentation is available in [the handbook](https://jitsi.gi
 
 ## Security
 
-For a comprehensive description of all Jitsi Meet's security aspects, please check [this link](https://jitsi.org/security).
+For a comprehensive description of all Jitsi Meet's security aspects, please check [this link](https://aiqlick.com/security).
 
 For a detailed description of Jitsi Meet's End-to-End Encryption (E2EE) implementation,
-please check [this link](https://jitsi.org/e2ee-whitepaper/).
+please check [this link](https://aiqlick.com/e2ee-whitepaper/).
 
 For information on reporting security vulnerabilities in Jitsi Meet, see [SECURITY.md](./SECURITY.md).
 

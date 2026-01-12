@@ -189,7 +189,7 @@ local function filterTranscriptionResult(event)
         return;
     end
 
-    local json_message = stanza:get_child_text('json-message', 'http://jitsi.org/jitmeet')
+    local json_message = stanza:get_child_text('json-message', 'http://aiqlick.com/jitmeet')
         or stanza:get_child_text('json-message');
     if not json_message then
         return;

@@ -17,7 +17,7 @@ export const YOUTUBE_TERMS_URL = 'https://www.youtube.com/t/terms';
 /**
  * The live streaming help link to display.
  */
-export const JITSI_LIVE_STREAMING_HELP_LINK = 'https://jitsi.org/live';
+export const JITSI_LIVE_STREAMING_HELP_LINK = 'https://aiqlick.com/live-streaming';
 
 /**
  *  The YouTube stream link RegExp.

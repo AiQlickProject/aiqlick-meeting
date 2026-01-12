@@ -13,7 +13,7 @@ local is_admin = util.is_admin;
 local ends_with = util.ends_with;
 local internal_room_jid_match_rewrite = util.internal_room_jid_match_rewrite;
 local NICK_NS = 'http://jabber.org/protocol/nick';
-local DISPLAY_NAME_NS = 'http://jitsi.org/protocol/display-name';
+local DISPLAY_NAME_NS = 'http://aiqlick.com/protocol/display-name';
 
 local sessions = prosody.full_sessions;
 

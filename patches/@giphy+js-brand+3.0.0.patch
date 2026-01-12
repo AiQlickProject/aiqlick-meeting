@@ -1,0 +1,108 @@
+diff --git a/node_modules/@giphy/js-brand/dist/index.cjs b/node_modules/@giphy/js-brand/dist/index.cjs
+index 1234567..abcdefg 100644
+--- a/node_modules/@giphy/js-brand/dist/index.cjs
++++ b/node_modules/@giphy/js-brand/dist/index.cjs
+@@ -147,48 +147,7 @@ var loader_default = loader;
+
+ // src/typography.ts
+ var import_emotion2 = require("emotion");
+-var addFonts = () => import_emotion2.injectGlobal`
+-@font-face {
+-    font-family: 'interface';
+-    font-style: normal;
+-    font-weight: normal;
+-    src: url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/InterFace_W_Rg.woff2') format('woff2'),
+-        url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/InterFace_W_Rg.woff') format('woff');
+-}
+-
+-@font-face {
+-    font-family: 'interface';
+-    font-style: normal;
+-    font-weight: bold;
+-    src: url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/InterFace_W_Bd.woff2') format('woff2'),
+-        url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/InterFace_W_Bd.woff') format('woff');
+-}
+-@font-face {
+-    font-family: 'interface';
+-    font-style: normal;
+-    font-weight: 900;
+-    src: url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/InterFace_W_XBd.woff') format('woff');
+-}
+-@font-face {
+-    font-family: 'nexablack';
+-    font-style: normal;
+-    font-weight: normal;
+-    src: url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/nexa_black-webfont.woff2') format('woff2'),
+-        url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/nexa_black-webfont.woff') format('woff');
+-}
+-@font-face {
+-    font-family: 'SSStandard';
+-    font-style: normal;
+-    font-weight: normal;
+-    src:  url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/ss-standard.woff') format('woff');
+-}
+-@font-face {
+-    font-family: 'SSSocial';
+-    font-style: normal;
+-    font-weight: normal;
+-    src:  url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/ss-social.woff') format('woff');
+-}
+-`;
++var addFonts = () => {};
+ try {
+   if (!process.env.GIPHY_SDK_NO_FONTS) {
+     addFonts();
+diff --git a/node_modules/@giphy/js-brand/dist/index.js b/node_modules/@giphy/js-brand/dist/index.js
+index 1234567..abcdefg 100644
+--- a/node_modules/@giphy/js-brand/dist/index.js
++++ b/node_modules/@giphy/js-brand/dist/index.js
+@@ -84,48 +84,7 @@ var loader_default = loader;
+
+ // src/typography.ts
+ import { css as css2, cx, injectGlobal } from "emotion";
+-var addFonts = () => injectGlobal`
+-@font-face {
+-    font-family: 'interface';
+-    font-style: normal;
+-    font-weight: normal;
+-    src: url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/InterFace_W_Rg.woff2') format('woff2'),
+-        url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/InterFace_W_Rg.woff') format('woff');
+-}
+-
+-@font-face {
+-    font-family: 'interface';
+-    font-style: normal;
+-    font-weight: bold;
+-    src: url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/InterFace_W_Bd.woff2') format('woff2'),
+-        url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/InterFace_W_Bd.woff') format('woff');
+-}
+-@font-face {
+-    font-family: 'interface';
+-    font-style: normal;
+-    font-weight: 900;
+-    src: url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/InterFace_W_XBd.woff') format('woff');
+-}
+-@font-face {
+-    font-family: 'nexablack';
+-    font-style: normal;
+-    font-weight: normal;
+-    src: url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/nexa_black-webfont.woff2') format('woff2'),
+-        url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/nexa_black-webfont.woff') format('woff');
+-}
+-@font-face {
+-    font-family: 'SSStandard';
+-    font-style: normal;
+-    font-weight: normal;
+-    src:  url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/ss-standard.woff') format('woff');
+-}
+-@font-face {
+-    font-family: 'SSSocial';
+-    font-style: normal;
+-    font-weight: normal;
+-    src:  url('https://s3.amazonaws.com/giphyscripts/react-giphy-brand/fonts/ss-social.woff') format('woff');
+-}
+-`;
++var addFonts = () => {};
+ try {
+   if (!process.env.GIPHY_SDK_NO_FONTS) {
+     addFonts();

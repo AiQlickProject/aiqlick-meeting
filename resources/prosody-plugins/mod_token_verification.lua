@@ -101,7 +101,7 @@ local function verify_user(session, stanza)
 
         local response = st.error_reply(stanza, 'cancel', 'not-allowed', reason);
         if err then
-            response:tag(err, { xmlns = 'http://jitsi.org/jitmeet' });
+            response:tag(err, { xmlns = 'http://aiqlick.com/jitmeet' });
         end
 
         session.send(response);

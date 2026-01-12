@@ -10,7 +10,7 @@ local get_room_from_jid = util.get_room_from_jid;
 local function attachJibriSessionId(event)
 local stanza = event.stanza;
     if stanza.name == "iq" then
-        local jibri = stanza:get_child('jibri', 'http://jitsi.org/protocol/jibri');
+        local jibri = stanza:get_child('jibri', 'http://aiqlick.com/protocol/jibri');
         if jibri then
             if jibri.attr.action == 'start' then
 

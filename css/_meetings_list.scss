@@ -34,7 +34,7 @@
 
     .meetings-list-empty-button {
         align-items: center;
-        color: #0163FF;
+        color: $aiqlickPrimary;
         cursor: pointer;
         display: flex;
         font-size: 0.875rem;
@@ -48,7 +48,7 @@
     }
 
     .button {
-        background: #0074E0;
+        background: $aiqlickPrimary;
         border-radius: 4px;
         color: #FFFFFF;
         display: flex;
@@ -157,7 +157,7 @@
         position: absolute;
 
         &>svg {
-            fill: #0074e0;
+            fill: $aiqlickPrimary;
         }
     }
 
@@ -170,7 +170,7 @@
 
         .delete-meeting:hover {
             &>svg {
-                fill: #4687ED;
+                fill: $aiqlickSecondary;
             }
         }
     }

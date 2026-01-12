@@ -30,7 +30,7 @@ var config = {
 
     hosts: {
         // XMPP domain.
-        domain: 'jitsi-meet.example.com',
+        domain: "jitsi-meet.example.com",
 
         // When using authentication, domain for guest users.
         // anonymousdomain: 'guest.example.com',
@@ -42,14 +42,14 @@ var config = {
         // focus: 'focus.jitsi-meet.example.com',
 
         // XMPP MUC domain. FIXME: use XEP-0030 to discover it.
-        muc: 'conference.' + subdomain + 'jitsi-meet.example.com',
+        muc: "conference." + subdomain + "jitsi-meet.example.com",
     },
 
     // BOSH URL. FIXME: use XEP-0156 to discover it.
-    bosh: 'https://jitsi-meet.example.com/' + subdir + 'http-bind',
+    bosh: "https://jitsi-meet.example.com/" + subdir + "http-bind",
 
     // Websocket URL (XMPP)
-    websocket: 'wss://jitsi-meet.example.com/' + subdir + 'xmpp-websocket',
+    websocket: "wss://jitsi-meet.example.com/" + subdir + "xmpp-websocket",
 
     // websocketKeepAliveUrl: 'https://jitsi-meet.example.com/' + subdir + '_unlock',
 
@@ -72,7 +72,6 @@ var config = {
         // which does not match ignoreDomain, falling back to the first one that matches
         // ignoreDomain. Has no effect if undefined.
         // ignoreDomain: 'example.com',
-
         // Prefer SCTP (WebRTC data channels over the media path) over a colibri websocket.
         // If SCTP is available in the backend it will be used instead of a WS. Defaults to
         // false (SCTP is used only if available and no WS are available).
@@ -85,39 +84,28 @@ var config = {
     testing: {
         // Allows the setting of a custom bandwidth value from the UI.
         // assumeBandwidth: true,
-
         // Enables use of getDisplayMedia in electron
         // electronUseGetDisplayMedia: false,
-
         // Enables AV1 codec for FF. Note: By default it is disabled.
         // enableAV1ForFF: false,
-
         // Enables the use of the codec selection API supported by the browsers .
         // enableCodecSelectionAPI: false,
-
         // P2P test mode disables automatic switching to P2P when there are 2
         // participants in the conference.
         // p2pTestMode: false,
-
         // Enables the test specific features consumed by jitsi-meet-torture
         // testMode: false,
-
         // Disables the auto-play behavior of *all* newly created video element.
         // This is useful when the client runs on a host with limited resources.
         // noAutoPlayVideo: false,
-
         // Experiment: Whether to skip interim transcriptions.
         // skipInterimTranscriptions: false,
-
         // Dump transcripts to a <transcript> element for debugging.
         // dumpTranscript: false,
-
         // Log the audio levels.
         // debugAudioLevels: true,
-
         // Will replace ice candidates IPs with invalid ones in order to fail ice.
         // failICE: true,
-
         // When running on Spot TV, this controls whether to show the recording consent dialog.
         // If false (default), Spot instances will not show the recording consent dialog.
         // If true, Spot instances will show the recording consent dialog like regular clients.
@@ -172,7 +160,6 @@ var config = {
     // Disables ICE/TCP by filtering out local and remote TCP candidates in
     // signalling.
     // webrtcIceTcpDisable: false,
-
 
     // Media
     //
@@ -419,7 +406,7 @@ var config = {
     //    // If true consent will be skipped for users who are already in the meeting.
     //    // skipConsentInMeeting: true,
     //    // Link for the recording consent dialog's "Learn more" link.
-    //    // consentLearnMoreLink: 'https://jitsi.org/meet/consent',
+    //    // consentLearnMoreLink: 'https://aiqlick.com/meet/consent',
     // },
 
     // recordingService: {
@@ -467,7 +454,7 @@ var config = {
     //    // RegExp string that validates the stream key input field
     //    validatorRegExpString: '^(?:[a-zA-Z0-9]{4}(?:-(?!$)|$)){4}',
     //    // Documentation reference for the live streaming feature.
-    //    helpLink: 'https://jitsi.org/live'
+    //    helpLink: 'https://aiqlick.com/live'
     // },
 
     // DEPRECATED. Use liveStreaming.enabled instead.
@@ -1090,7 +1077,6 @@ var config = {
     // will not function.
     // disableThirdPartyRequests: false,
 
-
     // Peer-To-Peer mode: used (if enabled) when there are just 2 participants.
     //
 
@@ -1128,27 +1114,22 @@ var config = {
 
         // The STUN servers that will be used in the peer to peer connections
         stunServers: [
-
             // { urls: 'stun:jitsi-meet.example.com:3478' },
-            { urls: 'stun:meet-jit-si-turnrelay.jitsi.net:443' },
+            { urls: "stun:meet-jit-si-turnrelay.jitsi.net:443" },
         ],
     },
 
     analytics: {
         // True if the analytics should be disabled
         // disabled: false,
-
         // Matomo configuration:
         // matomoEndpoint: 'https://your-matomo-endpoint/',
         // matomoSiteID: '42',
-
         // The Amplitude APP Key:
         // amplitudeAPPKey: '<APP_KEY>',
-
         // Obfuscates room name sent to analytics (amplitude, rtcstats)
         // Default value is false.
         // obfuscateRoomName: false,
-
         // Configuration for the rtcstats server:
         // By enabling rtcstats server every time a conference is joined the rtcstats
         // module connects to the provided rtcstatsEndpoint and sends statistics regarding
@@ -1156,24 +1137,19 @@ var config = {
         // interval.
         // rtcstatsEnabled: false,
         // rtcstatsStoreLogs: false,
-
         // In order to enable rtcstats one needs to provide a endpoint url.
         // rtcstatsEndpoint: wss://rtcstats-server-pilot.jitsi.net/,
-
         // The interval at which rtcstats will poll getStats, defaults to 10000ms.
         // If the value is set to 0 getStats won't be polled and the rtcstats client
         // will only send data related to RTCPeerConnection events.
         // rtcstatsPollInterval: 10000,
-
         // This determines if rtcstats sends the SDP to the rtcstats server or replaces
         // all SDPs with an empty string instead.
         // rtcstatsSendSdp: false,
-
         // Array of script URLs to load as lib-jitsi-meet "analytics handlers".
         // scriptURLs: [
         //      "https://example.com/my-custom-analytics.js",
         // ],
-
         // By enabling watchRTCEnabled option you would want to use watchRTC feature
         // This would also require to configure watchRTCConfigParams.
         // Please remember to keep rtcstatsEnabled disabled for watchRTC to work.
@@ -1334,8 +1310,8 @@ var config = {
     // // The terms, privacy and help centre URL's.
     // legalUrls: {
     //     helpCentre: 'https://web-cdn.jitsi.net/faq/meet-faq.html',
-    //     privacy: 'https://jitsi.org/meet/privacy',
-    //     terms: 'https://jitsi.org/meet/terms'
+    //     privacy: 'https://aiqlick.com/meet/privacy',
+    //     terms: 'https://aiqlick.com/meet/terms'
     // },
 
     // A property to disable the right click context menu for localVideo
@@ -1381,7 +1357,6 @@ var config = {
     //     // conversations.
     //     disablePrivateChat: 'all' | 'allow-moderator-chat' | 'disable-visitor-chat',
     // },
-
 
     // If set to true all muting operations of remote participants will be disabled.
     // disableRemoteMute: true,
@@ -1608,7 +1583,6 @@ var config = {
 
     // For external entities (e. g. email), the localStorage key holding the token value for directory authentication
     // peopleSearchTokenLocation: "mytoken",
-
 
     // Options related to visitors.
     // visitors: {

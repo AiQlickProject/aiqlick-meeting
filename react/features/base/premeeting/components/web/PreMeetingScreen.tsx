@@ -116,17 +116,49 @@ const useStyles = makeStyles()(theme => {
                 flexDirection: 'column-reverse'
             }
         },
+        leftPanel: {
+            position: 'relative',
+            overflow: 'hidden',
+            flexShrink: 0,
+            width: '400px',
+            height: '100%',
+
+            '@media (max-width: 720px)': {
+                height: 'auto',
+                width: '100%'
+            }
+        },
+        videoBackground: {
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            minWidth: '100%',
+            minHeight: '100%',
+            width: 'auto',
+            height: 'auto',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 0,
+            objectFit: 'cover'
+        },
+        videoOverlay: {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(240, 244, 255, 0.88), rgba(227, 238, 255, 0.85), rgba(212, 228, 255, 0.82))',
+            zIndex: 1
+        },
         content: {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            flexShrink: 0,
             boxSizing: 'border-box',
             padding: '24px 0 16px',
             position: 'relative',
-            width: '400px',
+            width: '100%',
             height: '100%',
-            zIndex: 252,
+            zIndex: 2,
 
             '@media (max-width: 720px)': {
                 height: 'auto',
@@ -163,7 +195,7 @@ const useStyles = makeStyles()(theme => {
         },
         title: {
             ...theme.typography.heading4,
-            color: `${theme.palette.text01}!important`,
+            color: '#2C3E50 !important',
             marginBottom: theme.spacing(3),
             textAlign: 'center',
 
@@ -179,7 +211,7 @@ const useStyles = makeStyles()(theme => {
 
         roomName: {
             ...theme.typography.heading5,
-            color: theme.palette.text01,
+            color: '#2C3E50',
             display: 'inline-block',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -226,7 +258,20 @@ const PreMeetingScreen = ({
 
     return (
         <div className = { clsx('premeeting-screen', classes.container, className) }>
-            <div style = { style }>
+            <div
+                className = { classes.leftPanel }
+                style = { style }>
+                <video
+                    autoPlay
+                    className = { classes.videoBackground }
+                    loop
+                    muted
+                    playsInline>
+                    <source
+                        src = 'images/Interview.mp4'
+                        type = 'video/mp4' />
+                </video>
+                <div className = { classes.videoOverlay } />
                 <div className = { classes.content }>
                     {_isPreCallTestEnabled && <ConnectionStatus />}
 

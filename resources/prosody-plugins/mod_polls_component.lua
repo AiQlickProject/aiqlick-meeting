@@ -96,7 +96,7 @@ local function send_polls_message(room, data_str, to)
         from = module.host,
         to = to
     })
-    :tag("json-message", { xmlns = "http://jitsi.org/jitmeet" })
+    :tag("json-message", { xmlns = "http://aiqlick.com/jitmeet" })
     :text(data_str)
     :up();
     room:route_stanza(stanza);
@@ -123,7 +123,7 @@ end
             return;
         end
 
-        local json_message = stanza:get_child('json-message', 'http://jitsi.org/jitmeet')
+        local json_message = stanza:get_child('json-message', 'http://aiqlick.com/jitmeet')
             or stanza:get_child('json-message');
         if not json_message then
             return;

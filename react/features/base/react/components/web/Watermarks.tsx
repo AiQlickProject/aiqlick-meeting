@@ -50,7 +50,6 @@ interface IProps extends WithTranslation {
  * The type of the React {@code Component} state of {@link Watermarks}.
  */
 type State = {
-
     /**
      * The url to open when clicking the brand watermark.
      */
@@ -62,7 +61,7 @@ type State = {
     showBrandWatermark: boolean;
 
     /**
-     * Whether or not the show the "powered by Jitsi.org" link.
+     * Whether or not the show the "powered by aiqlick.com" link.
      */
     showPoweredBy: boolean;
 };
@@ -201,9 +200,9 @@ class Watermarks extends Component<IProps, State> {
             return (
                 <a
                     className = 'poweredby'
-                    href = 'http://jitsi.org'
+                    href = 'https://aiqlick.com'
                     target = '_new'>
-                    <span>{ t('poweredby') } jitsi.org</span>
+                    <span>{ t('poweredby') } aiqlick.com</span>
                 </a>
             );
         }

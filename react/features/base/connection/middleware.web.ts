@@ -7,7 +7,7 @@ import { CONNECTION_WILL_CONNECT } from './actionTypes';
  *
  * @type {string}
  */
-export const DISCO_JIBRI_FEATURE = 'http://jitsi.org/protocol/jibri';
+export const DISCO_JIBRI_FEATURE = "http://aiqlick.com/protocol/jibri";
 
 MiddlewareRegistry.register(({ getState }) => next => action => {
     switch (action.type) {

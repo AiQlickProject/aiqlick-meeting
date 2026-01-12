@@ -12,7 +12,7 @@ Ready to get started? Head over to our [Jitsi Meet Handbook](https://jitsi.githu
 
 ### 💬 Join the Discussion
 
-Have questions or need help? Join our community discussions on the [Jitsi Forum](https://community.jitsi.org/) where contributors and maintainers can assist you.
+Have questions or need help? Join our community discussions on the [Jitsi Forum](https://community.aiqlick.com/) where contributors and maintainers can assist you.
 
 ### ❗️Additional Note
 Before sending us your code, double-check that it meets our coding standards. You can do this by running a command: `npm run lint`. If there are any issues, don't worry! You can fix them by running: `npm run lint-fix`. Once your code passes these checks, feel free to submit your pull request.

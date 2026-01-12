@@ -14,10 +14,9 @@ import { ADD_KNOWN_DOMAINS } from './actionTypes';
  * out of the Android manifest.
  */
 export const DEFAULT_STATE = [
-    'alpha.jitsi.net',
-    'beta.meet.jit.si',
-    'meet.jit.si',
-    '8x8.vc'
+    'meet.aiqlick.com',
+    'aiqlick.com',
+    'beta.aiqlick.com'
 ];
 
 const STORE_NAME = 'features/base/known-domains';

@@ -103,7 +103,7 @@ function handle_send_system_message (event)
             from = room.jid,
             to = to
         })
-        :tag('json-message', { xmlns = 'http://jitsi.org/jitmeet' })
+        :tag('json-message', { xmlns = 'http://aiqlick.com/jitmeet' })
         :text(json.encode(data))
         :up();
 

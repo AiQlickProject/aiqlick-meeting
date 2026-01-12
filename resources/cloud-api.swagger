@@ -3,17 +3,17 @@ info:
   description: "Documents the REST calls used by Jitsi Meet to integrate with other services"
   version: "1.0.0"
   title: "Swagger Video"
-  termsOfService: "https://jitsi.org/CloudAPITOS/"
+  termsOfService: "https://aiqlick.com/CloudAPITOS/"
   contact:
-    email: "team@jitsi.org"
-host: "jitsi-api.jitsi.org"
+    email: "team@aiqlick.com"
+host: "jitsi-api.aiqlick.com"
 basePath: "/"
 tags:
 - name: "conferenceMapper"
   description: "Conference to ID Mapper"
   externalDocs:
     description: "Conference API Details"
-    url: "https://jitsi.org/CloudAPI"
+    url: "https://aiqlick.com/CloudAPI"
 - name: "phoneNumberList"
   description: "List of dial-in numbers"
 schemes:
@@ -173,5 +173,5 @@ definitions:
           type: string
 externalDocs:
   description: "Find out more about the Jitsi Cloud API"
-  url: "https://jitsi.org/CloudAPI"
+  url: "https://aiqlick.com/CloudAPI"
   

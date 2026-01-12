@@ -11,9 +11,21 @@ $baseFontFamily: -apple-system, BlinkMacSystemFont, 'open_sanslight', 'Helvetica
 $thumbnailsBorder: 2px;
 
 /**
+ * Aiqlick Brand Colors
+ */
+$aiqlickPrimary: #3D52A0;
+$aiqlickSecondary: #7091E6;
+$aiqlickTertiary: #8697C4;
+$aiqlickLight: #ADBBDA;
+$aiqlickBackground: #EDE8F5;
+$aiqlickTextDark: #2C3E50;
+$aiqlickGradient: linear-gradient(135deg, #1A2556, #2A3B7D, #3D52A0, #4B61A8, #5B6FB8, #7091E6);
+$aiqlickGradientLight: linear-gradient(135deg, #FFFFFF, #F0F4FF, #E3EEFF, #D4E4FF, #C4D9FF, #B5CEFF);
+
+/**
  * Toolbar
  */
-$newToolbarBackgroundColor: #131519;
+$newToolbarBackgroundColor: #1A2556;
 $newToolbarSize: 48px;
 $newToolbarSizeMobile: 60px;
 $newToolbarSizeWithPadding: calc(#{$newToolbarSize} + 24px);
@@ -21,7 +33,7 @@ $newToolbarSizeWithPadding: calc(#{$newToolbarSize} + 24px);
 /**
  * Chat
  */
-$chatBackgroundColor: #131519;
+$chatBackgroundColor: #2A3B7D;
 
 /**
  * Misc.
@@ -46,7 +58,7 @@ $filmstripVideosZ: $toolbarZ + 1;
 /**
  * Unsupported browser
  */
-$primaryUnsupportedBrowserButtonBgColor: #0052CC;
+$primaryUnsupportedBrowserButtonBgColor: $aiqlickPrimary;
 $unsupportedBrowserButtonBgColor: rgba(9, 30, 66, 0.04);
 $unsupportedBrowserTextColor: #4a4a4a;
 $unsupportedBrowserTextSmallFontSize: 1rem;
@@ -58,30 +70,30 @@ $unsupportedDesktopBrowserTextFontSize: 1.25rem;
 /**
  * The size of the default watermark.
  */
-$watermarkWidth: 71px;
-$watermarkHeight: 32px;
+$watermarkWidth: 284px;
+$watermarkHeight: 128px;
 
-$welcomePageWatermarkWidth: 71px;
-$welcomePageWatermarkHeight: 32px;
+$welcomePageWatermarkWidth: 284px;
+$welcomePageWatermarkHeight: 128px;
 
 /**
  * Welcome page variables.
  */
-$welcomePageDescriptionColor: #fff;
+$welcomePageDescriptionColor: $aiqlickTextDark;
 $welcomePageFontFamily: inherit;
-$welcomePageBackground: none;
-$welcomePageTitleColor: #fff;
+$welcomePageBackground: $aiqlickBackground;
+$welcomePageTitleColor: $aiqlickTextDark;
 
-$welcomePageHeaderBackground: linear-gradient(0deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2)), url('../images/welcome-background.png');
+$welcomePageHeaderBackground: linear-gradient(135deg, rgba(26, 37, 86, 0.85), rgba(42, 59, 125, 0.85), rgba(61, 82, 160, 0.85), rgba(112, 145, 230, 0.75)), url('../images/interview.jpg');
 $welcomePageHeaderBackgroundPosition: center;
 $welcomePageHeaderBackgroundRepeat: none;
 $welcomePageHeaderBackgroundSize: cover;
 $welcomePageHeaderPadding: 1rem;
 $welcomePageHeaderTitleMaxWidth: initial;
 $welcomePageHeaderTextAlign: center;
-$welcomePageButtonBg: #0074E0;
-$welcomePageButtonHoverBg: #4687ED;
-$welcomePageButtonFocusOutline: #00225A;
+$welcomePageButtonBg: $aiqlickPrimary;
+$welcomePageButtonHoverBg: $aiqlickSecondary;
+$welcomePageButtonFocusOutline: #1A2556;
 
 $welcomePageHeaderContainerMarginTop: 104px;
 $welcomePageHeaderContainerDisplay: flex;

@@ -54,7 +54,7 @@ local muc_domain_prefix = module:get_option_string('muc_mapper_domain_prefix', '
 local local_muc_domain = muc_domain_prefix..'.'..local_domain;
 
 local NICK_NS = 'http://jabber.org/protocol/nick';
-local DISPLAY_NAME_NS = 'http://jitsi.org/protocol/display-name';
+local DISPLAY_NAME_NS = 'http://aiqlick.com/protocol/display-name';
 
 -- in certain cases we consider participants with token as moderators, this is the default behavior which can be turned off
 local auto_promoted_with_token = module:get_option_boolean('visitors_auto_promoted_with_token', true);
@@ -890,7 +890,7 @@ module:hook('answer-poll', function(answerData)
         from = module.host,
         to = 'polls.'..main_domain
     })
-    :tag("json-message", { xmlns = "http://jitsi.org/jitmeet"; roomJid = room_jid; })
+    :tag("json-message", { xmlns = "http://aiqlick.com/jitmeet"; roomJid = room_jid; })
     :text(data_str)
     :up();
     room:route_stanza(stanza);

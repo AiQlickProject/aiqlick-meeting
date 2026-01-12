@@ -48,7 +48,7 @@ local function invite_jigasi(conference, phone_no)
         local _, _, resource = jid_split(occupant_jid);
         if resource ~= 'focus' then
             local occ = occupant:get_presence();
-            local stats_child = occ:get_child("stats", "http://jitsi.org/protocol/colibri")
+            local stats_child = occ:get_child("stats", "http://aiqlick.com/protocol/colibri")
 
             local is_sip_jigasi = true;
             for stats_tag in stats_child:children() do

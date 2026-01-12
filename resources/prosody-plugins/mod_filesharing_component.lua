@@ -43,7 +43,7 @@ function on_message(event)
         return false;
     end
 
-    local message = stanza:get_child(FILE_SHARING_IDENTITY_TYPE, 'http://jitsi.org/jitmeet');
+    local message = stanza:get_child(FILE_SHARING_IDENTITY_TYPE, 'http://aiqlick.com/jitmeet');
 
     if not message then
         return false;
@@ -150,7 +150,7 @@ function occupant_joined(event)
     });
 
     local stanza = st.message({ from = module.host; to = occupant.jid; })
-        :tag('json-message', { xmlns = 'http://jitsi.org/jitmeet' })
+        :tag('json-message', { xmlns = 'http://aiqlick.com/jitmeet' })
         :text(json_msg):up();
 
     module:send(stanza);
@@ -188,7 +188,7 @@ process_host_module(muc_domain_base, function(host_module, host)
             return false
         end
 
-        local stanza = st.message({ from = module.host; }):tag('json-message', { xmlns = 'http://jitsi.org/jitmeet' })
+        local stanza = st.message({ from = module.host; }):tag('json-message', { xmlns = 'http://aiqlick.com/jitmeet' })
             :text(json_msg):up();
 
         -- send add file to all occupants except jicofo and sender
@@ -225,7 +225,7 @@ process_host_module(muc_domain_base, function(host_module, host)
             return false
         end
 
-        local stanza = st.message({ from = module.host; }):tag('json-message', { xmlns = 'http://jitsi.org/jitmeet' })
+        local stanza = st.message({ from = module.host; }):tag('json-message', { xmlns = 'http://aiqlick.com/jitmeet' })
             :text(json_msg):up();
 
         -- send remove file to all occupants except jicofo and sender

@@ -32,7 +32,7 @@ body {
     font-weight: 400;
     overflow: hidden;
     color: #F1F1F1;
-    background: #040404; // should match DEFAULT_BACKGROUND from interface_config
+    background: $aiqlickBackground; // Aiqlick brand background
 }
 
 /**
@@ -90,8 +90,12 @@ input[type='text'], input[type='password'], textarea {
 
 button {
     color: #FFF;
-    background-color: #44A5FF;
+    background-color: $aiqlickPrimary;
     border-radius: $borderRadius;
+
+    &:hover {
+        background-color: $aiqlickSecondary;
+    }
 
     &.no-icon {
         padding: 0 1em;
@@ -115,8 +119,8 @@ form {
 }
 
 .leftwatermark {
-    max-width: 140px;
-    max-height:70px;
+    max-width: 420px;
+    max-height: 210px;
     left: 32px;
     top: 32px;
     background-position: center left;
@@ -167,7 +171,7 @@ form {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #3D3D3D;
+    background: $aiqlickTertiary;
     border-radius: 4px;
 }
 

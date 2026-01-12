@@ -38,7 +38,7 @@ local valid_affiliations = muc_util.valid_affiliations;
 local MUC_NS = 'http://jabber.org/protocol/muc';
 local MUC_USER_NS = 'http://jabber.org/protocol/muc#user';
 local DISCO_INFO_NS = 'http://jabber.org/protocol/disco#info';
-local DISPLAY_NAME_REQUIRED_FEATURE = 'http://jitsi.org/protocol/lobbyrooms#displayname_required';
+local DISPLAY_NAME_REQUIRED_FEATURE = 'http://aiqlick.com/protocol/lobbyrooms#displayname_required';
 local LOBBY_IDENTITY_TYPE = 'lobbyrooms';
 local NOTIFY_JSON_MESSAGE_TYPE = 'lobby-notify';
 local NOTIFY_LOBBY_ENABLED = 'LOBBY-ENABLED';
@@ -91,7 +91,7 @@ function broadcast_json_msg(room, from, json_msg)
 
         room:broadcast_message(
             st.message({ type = 'groupchat', from = occupant.nick })
-              :tag('json-message', {xmlns='http://jitsi.org/jitmeet'})
+              :tag('json-message', {xmlns='http://aiqlick.com/jitmeet'})
               :text(json_msg_str):up());
     end
 end
@@ -586,7 +586,7 @@ process_host_module(main_muc_component_config, function(host_module, host)
         if (not displayName or #displayName == 0) and not room._data.lobby_skip_display_name_check then
             local reply = st.error_reply(stanza, 'modify', 'not-acceptable');
             reply.tags[1].attr.code = '406';
-            reply:tag('displayname-required', { xmlns = 'http://jitsi.org/jitmeet', lobby = 'true' }):up():up();
+            reply:tag('displayname-required', { xmlns = 'http://aiqlick.com/jitmeet', lobby = 'true' }):up():up();
 
             event.origin.send(reply:tag('x', {xmlns = MUC_NS}));
             return true;
@@ -599,9 +599,9 @@ process_host_module(main_muc_component_config, function(host_module, host)
             local reply = st.error_reply(stanza, 'auth', 'registration-required');
             reply.tags[1].attr.code = '407';
             if room._data.lobby_extra_reason then
-                reply:tag(room._data.lobby_extra_reason, { xmlns = 'http://jitsi.org/jitmeet' }):up();
+                reply:tag(room._data.lobby_extra_reason, { xmlns = 'http://aiqlick.com/jitmeet' }):up();
             end
-            reply:tag('lobbyroom', { xmlns = 'http://jitsi.org/jitmeet' }):text(room._data.lobbyroom):up():up();
+            reply:tag('lobbyroom', { xmlns = 'http://aiqlick.com/jitmeet' }):text(room._data.lobbyroom):up():up();
 
             -- TODO: Drop this tag at some point (when all mobile clients and jigasi are updated), as this violates the rfc
             reply:tag('lobbyroom'):text(room._data.lobbyroom):up();

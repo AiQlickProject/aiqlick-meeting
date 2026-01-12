@@ -1,11 +1,11 @@
 Source: jitsi-meet-web
 Section: net
 Priority: extra
-Maintainer: Jitsi Team <dev@jitsi.org>
-Uploaders: Emil Ivov <emcho@jitsi.org>, Damian Minkov <damencho@jitsi.org>
+Maintainer: Jitsi Team <dev@aiqlick.com>
+Uploaders: Emil Ivov <emcho@aiqlick.com>, Damian Minkov <damencho@aiqlick.com>
 Build-Depends: debhelper (>= 8.0.0)
 Standards-Version: 3.9.6
-Homepage: https://jitsi.org/meet
+Homepage: https://aiqlick.com/meet
 
 Package: jitsi-meet-web
 Replaces: jitsi-meet (<= 1.0.1525-1)

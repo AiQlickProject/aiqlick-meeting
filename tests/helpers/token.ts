@@ -56,26 +56,26 @@ export type IToken = {
 
 export function generatePayload(options: ITokenOptions): any {
     const payload = {
-        'aud': 'jitsi',
-        'iss': 'chat',
-        'sub': options?.sub || '',
-        'context': {
-            'user': {
-                'name': options.displayName,
-                'id': uuidv4(),
-                'avatar': 'https://avatars0.githubusercontent.com/u/3671647',
-                'email': 'john.doe@jitsi.org'
+        aud: "jitsi",
+        iss: "chat",
+        sub: options?.sub || "",
+        context: {
+            user: {
+                name: options.displayName,
+                id: uuidv4(),
+                avatar: "https://avatars0.githubusercontent.com/u/3671647",
+                email: "john.doe@aiqlick.com",
             },
-            'group': uuidv4(),
-            'features': {
-                'outbound-call': 'true',
-                'transcription': 'true',
-                'recording': 'true',
-                'sip-outbound-call': true,
-                'livestreaming': true
+            group: uuidv4(),
+            features: {
+                "outbound-call": "true",
+                transcription: "true",
+                recording: "true",
+                "sip-outbound-call": true,
+                livestreaming: true,
             },
         },
-        'room': options.room || '*'
+        room: options.room || "*",
     };
 
     if (options.moderator) {

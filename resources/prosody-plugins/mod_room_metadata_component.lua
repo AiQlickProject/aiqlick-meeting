@@ -106,7 +106,7 @@ function send_metadata(occupant, room, json_msg)
 
     local stanza = st.message({ from = module.host; to = occupant.jid; })
          :tag('json-message', {
-             xmlns = 'http://jitsi.org/jitmeet',
+             xmlns = 'http://aiqlick.com/jitmeet',
              room = internal_room_jid_match_rewrite(room.jid)
          }):text(json_msg):up();
     module:send(stanza);
@@ -140,7 +140,7 @@ function on_message(event)
         return false;
     end
 
-    local message = event.stanza:get_child(COMPONENT_IDENTITY_TYPE, 'http://jitsi.org/jitmeet');
+    local message = event.stanza:get_child(COMPONENT_IDENTITY_TYPE, 'http://aiqlick.com/jitmeet');
     local messageText = message:get_text();
 
     if not message or not messageText then
@@ -235,7 +235,7 @@ function process_main_muc_loaded(main_muc, host_module)
             return;
         end
 
-        local startMuted = stanza:get_child('startmuted', 'http://jitsi.org/jitmeet/start-muted');
+        local startMuted = stanza:get_child('startmuted', 'http://aiqlick.com/jitmeet/start-muted');
 
         if not startMuted then
             return;

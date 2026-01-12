@@ -143,7 +143,7 @@ module:hook("muc-broadcast-presence", function (event)
         if(event.stanza.attr.type == "unavailable"
         and poltergeist.should_ignore(event.occupant.nick)) then
             event.stanza:tag(
-                "ignore", { xmlns = "http://jitsi.org/jitmeet/" }):up();
+                "ignore", { xmlns = "http://aiqlick.com/jitmeet/" }):up();
                 poltergeist.reset_ignored(event.occupant.nick);
         end
     end

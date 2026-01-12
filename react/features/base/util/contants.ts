@@ -1,1 +1,1 @@
-export const SECURITY_URL = 'https://jitsi.org/security/';
+export const SECURITY_URL = 'https://aiqlick.com/security';
