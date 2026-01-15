@@ -477,6 +477,9 @@ export interface IConfig {
     locationURL?: URL;
     logging?: ILoggingConfig;
     mainToolbarButtons?: Array<Array<string>>;
+    moderatorPanel?: {
+        graphqlWsUrl?: string;
+    };
     maxFullResolutionParticipants?: number;
     microsoftApiApplicationClientID?: string;
     moderatedRoomServiceUrl?: string;

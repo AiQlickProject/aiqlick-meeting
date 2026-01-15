@@ -10,6 +10,7 @@ import { getConferenceNameForTitle } from '../../../base/conference/functions';
 import { hangup } from '../../../base/connection/actions.web';
 import { isMobileBrowser } from '../../../base/environment/utils';
 import { translate } from '../../../base/i18n/functions';
+import { isLocalParticipantModerator } from '../../../base/participants/functions';
 import { setColorAlpha } from '../../../base/util/helpers';
 import { openChat, setFocusedTab } from '../../../chat/actions.web';
 import Chat from '../../../chat/components/web/Chat';
@@ -22,6 +23,9 @@ import CalleeInfoContainer from '../../../invite/components/callee-info/CalleeIn
 import LargeVideo from '../../../large-video/components/LargeVideo.web';
 import LobbyScreen from '../../../lobby/components/web/LobbyScreen';
 import { getIsLobbyVisible } from '../../../lobby/functions';
+import InsightsSidebar from '../../../moderator-panel/components/web/InsightsSidebar';
+import ModeratorPanel from '../../../moderator-panel/components/web/ModeratorPanel';
+import '../../../moderator-panel/reducer';
 import { getOverlayToRender } from '../../../overlay/functions.web';
 import ParticipantsPane from '../../../participants-pane/components/web/ParticipantsPane';
 import Prejoin from '../../../prejoin/components/web/Prejoin';
@@ -73,6 +77,11 @@ interface IProps extends AbstractProps, WithTranslation {
      * Are any overlays visible?
      */
     _isAnyOverlayVisible: boolean;
+
+    /**
+     * Whether the local participant is a moderator.
+     */
+    _isLocalModerator: boolean;
 
     /**
      * The CSS class to apply to the root of {@link Conference} to modify the
@@ -228,6 +237,7 @@ class Conference extends AbstractConference<IProps, any> {
     override render() {
         const {
             _isAnyOverlayVisible,
+            _isLocalModerator,
             _layoutClassName,
             _notificationsVisible,
             _overflowDrawer,
@@ -277,7 +287,7 @@ class Conference extends AbstractConference<IProps, any> {
                 onMouseLeave = { this._onMouseLeave }
                 onMouseMove = { this._onMouseMove }
                 ref = { this._setBackground }>
-                <Chat />
+                <ModeratorPanel />
                 <div
                     className = { _layoutClassName }
                     id = 'videoconference_page'
@@ -322,7 +332,9 @@ class Conference extends AbstractConference<IProps, any> {
                     { (_showLobby && !_showVisitorsQueue) && <LobbyScreen />}
                     { _showVisitorsQueue && <VisitorsQueue />}
                 </div>
-                <ParticipantsPane />
+                <InsightsSidebar />
+                <Chat />
+                { !_isLocalModerator && <ParticipantsPane /> }
                 <ReactionAnimations />
             </div>
         );
@@ -462,6 +474,7 @@ function _mapStateToProps(state: IReduxState) {
         ...abstractMapStateToProps(state),
         _backgroundAlpha: backgroundAlpha,
         _isAnyOverlayVisible: Boolean(getOverlayToRender(state)),
+        _isLocalModerator: isLocalParticipantModerator(state),
         _layoutClassName: LAYOUT_CLASSNAMES[getCurrentLayout(state) ?? ''],
         _mouseMoveCallbackInterval: mouseMoveCallbackInterval,
         _overflowDrawer: overflowDrawer,
