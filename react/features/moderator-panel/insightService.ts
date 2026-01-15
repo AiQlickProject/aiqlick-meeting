@@ -156,9 +156,13 @@ class InsightService {
                 callbacks.onError(new Error('WebSocket connection error'));
             };
 
-            this.ws.onclose = (event: CloseEvent) => {
+            this.ws.onclose = event => {
                 logger.info('WebSocket closed:', event.code, event.reason);
-                if (!event.wasClean) {
+
+                // Check wasClean safely - it exists in browser CloseEvent but not in React Native WebSocketCloseEvent
+                const wasClean = 'wasClean' in event ? event.wasClean : true;
+
+                if (!wasClean) {
                     callbacks.onError(new Error(`WebSocket closed unexpectedly: ${event.reason}`));
                 }
             };
