@@ -5,9 +5,9 @@ import { makeStyles } from 'tss-react/mui';
 
 import { IReduxState } from '../../../app/types';
 import { isMobileBrowser } from '../../../base/environment/utils';
+import Icon from '../../../base/icons/components/Icon';
 import { IconArrowLeft, IconArrowRight } from '../../../base/icons/svg';
 import { isLocalParticipantModerator } from '../../../base/participants/functions';
-import Icon from '../../../base/icons/components/Icon';
 import { toggleInsightsSidebar } from '../../actions';
 import { COLUMN_WIDTH, SM_BREAKPOINT } from '../../constants';
 import { isInsightsSidebarOpen } from '../../functions';

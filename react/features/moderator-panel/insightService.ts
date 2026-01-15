@@ -61,6 +61,7 @@ class InsightService {
      * Set the WebSocket URL for GraphQL subscriptions.
      *
      * @param {string} url - The WebSocket URL.
+     * @returns {void}
      */
     setWsUrl(url: string): void {
         this.wsUrl = url;
@@ -171,6 +172,8 @@ class InsightService {
 
     /**
      * Cancel the current subscription.
+     *
+     * @returns {void}
      */
     cancelSubscription(): void {
         if (this.ws) {

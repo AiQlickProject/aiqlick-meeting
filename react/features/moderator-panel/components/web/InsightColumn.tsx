@@ -324,10 +324,11 @@ const InsightColumn = () => {
                 <div className = { classes.sectionTitle }>
                     { t('moderatorPanel.recommendation', 'Recommendation') }
                 </div>
-                <span className = { cx(
-                    classes.recommendationBadge,
-                    getRecommendationClass(insight.overallRecommendation.hireRecommendation)
-                ) }>
+                <span
+                    className = { cx(
+                        classes.recommendationBadge,
+                        getRecommendationClass(insight.overallRecommendation.hireRecommendation)
+                    ) }>
                     { insight.overallRecommendation.hireRecommendation }
                 </span>
                 <div className = { classes.summary }>
