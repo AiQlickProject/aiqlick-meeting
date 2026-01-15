@@ -102,7 +102,7 @@ class InsightService {
                 }));
             };
 
-            this.ws.onmessage = (event: MessageEvent) => {
+            this.ws.onmessage = event => {
                 try {
                     const message = JSON.parse(event.data);
 
@@ -151,7 +151,7 @@ class InsightService {
                 }
             };
 
-            this.ws.onerror = (event: Event) => {
+            this.ws.onerror = event => {
                 logger.error('WebSocket error:', event);
                 callbacks.onError(new Error('WebSocket connection error'));
             };
