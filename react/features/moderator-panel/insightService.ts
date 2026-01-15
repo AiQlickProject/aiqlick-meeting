@@ -102,9 +102,9 @@ class InsightService {
                 }));
             };
 
-            this.ws.onmessage = event => {
+            this.ws.onmessage = (event: { data?: string }) => {
                 try {
-                    const message = JSON.parse(event.data);
+                    const message = JSON.parse(event.data ?? '');
 
                     switch (message.type) {
                     case 'connection_ack':
@@ -151,19 +151,15 @@ class InsightService {
                 }
             };
 
-            this.ws.onerror = event => {
-                logger.error('WebSocket error:', event);
+            this.ws.onerror = () => {
+                logger.error('WebSocket error');
                 callbacks.onError(new Error('WebSocket connection error'));
             };
 
-            this.ws.onclose = event => {
+            this.ws.onclose = (event: { code?: number; reason?: string; wasClean?: boolean }) => {
                 logger.info('WebSocket closed:', event.code, event.reason);
-
-                // Check wasClean safely - it exists in browser CloseEvent but not in React Native WebSocketCloseEvent
-                const wasClean = 'wasClean' in event ? event.wasClean : true;
-
-                if (!wasClean) {
-                    callbacks.onError(new Error(`WebSocket closed unexpectedly: ${event.reason}`));
+                if (!event.wasClean) {
+                    callbacks.onError(new Error(`WebSocket closed unexpectedly: ${event.reason || ''}`));
                 }
             };
         } catch (err) {
