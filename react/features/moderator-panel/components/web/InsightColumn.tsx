@@ -384,12 +384,31 @@ const InsightColumn = () => {
                         break;
 
                     case 'MeetingInsightSuccess':
-                        setState(prev => ({
-                            ...prev,
-                            insight: result.insight,
-                            isLoading: false,
-                            progress: 100
-                        }));
+                        // Check if insight has meaningful data
+                        if (!result.insight || (!result.insight.fullReport
+                            && !result.insight.overallRecommendation
+                            && !result.insight.skillsAssessment
+                            && !result.insight.communicationAnalysis)) {
+                            setState(prev => ({
+                                ...prev,
+                                error: {
+                                    code: 'EMPTY_INSIGHT',
+                                    message: t('moderatorPanel.emptyInsight',
+                                        'No insight data was generated'),
+                                    recoveryHint: t('moderatorPanel.emptyInsightHint',
+                                        'This may happen if the meeting has no transcript yet. '
+                                        + 'Try again after some conversation has occurred.')
+                                },
+                                isLoading: false
+                            }));
+                        } else {
+                            setState(prev => ({
+                                ...prev,
+                                insight: result.insight,
+                                isLoading: false,
+                                progress: 100
+                            }));
+                        }
                         break;
 
                     case 'MeetingInsightFailure':

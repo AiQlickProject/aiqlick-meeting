@@ -141,6 +141,27 @@ class InsightService {
         // Cancel any existing subscription
         this.cancelSubscription();
 
+        let receivedData = false;
+        let connectionTimeout: ReturnType<typeof setTimeout> | null = null;
+
+        // Set connection timeout (30 seconds)
+        connectionTimeout = setTimeout(() => {
+            if (!receivedData) {
+                logger.error('Connection timeout - no response received');
+                callbacks.onError(new Error(
+                    'Connection timeout. The server did not respond in time. Please try again.'
+                ));
+                this.cancelSubscription();
+            }
+        }, 30000);
+
+        const clearConnectionTimeout = () => {
+            if (connectionTimeout) {
+                clearTimeout(connectionTimeout);
+                connectionTimeout = null;
+            }
+        };
+
         try {
             logger.info(`Connecting to GraphQL subscription at: ${this.wsUrl}`);
             this.ws = new WebSocket(this.wsUrl, 'graphql-transport-ws');
@@ -184,6 +205,8 @@ class InsightService {
                     case 'next':
                         // Subscription data received
                         if (message.payload?.data?.generateMeetingInsight) {
+                            receivedData = true;
+                            clearConnectionTimeout();
                             const result = message.payload.data.generateMeetingInsight;
 
                             logger.debug('Received insight result:', result.__typename);
@@ -193,6 +216,7 @@ class InsightService {
 
                     case 'error':
                         // Subscription error
+                        clearConnectionTimeout();
                         logger.error('GraphQL subscription error:', message.payload);
                         callbacks.onError(new Error(
                             message.payload?.[0]?.message || 'Subscription error'
@@ -201,8 +225,17 @@ class InsightService {
 
                     case 'complete':
                         // Subscription completed
+                        clearConnectionTimeout();
                         logger.info('Insight subscription completed');
-                        callbacks.onComplete();
+                        if (!receivedData) {
+                            // Subscription completed without sending any data
+                            callbacks.onError(new Error(
+                                'No insight data received. The meeting may not have '
+                                + 'enough transcript data yet. Please try again later.'
+                            ));
+                        } else {
+                            callbacks.onComplete();
+                        }
                         this.cancelSubscription();
                         break;
 
@@ -215,22 +248,34 @@ class InsightService {
             };
 
             this.ws.onerror = () => {
+                clearConnectionTimeout();
                 logger.error('WebSocket error');
-                callbacks.onError(new Error('WebSocket connection error. Please check network connectivity.'));
+                callbacks.onError(new Error(
+                    'Failed to connect to the insight service. '
+                    + 'Please check your network connection and try again.'
+                ));
             };
 
             this.ws.onclose = (event: { code?: number; reason?: string; wasClean?: boolean }) => {
+                clearConnectionTimeout();
                 logger.info('WebSocket closed:', event.code, event.reason);
                 if (!event.wasClean) {
-                    callbacks.onError(new Error(`WebSocket closed unexpectedly: ${event.reason || 'Connection lost'}`));
+                    callbacks.onError(new Error(
+                        `Connection lost unexpectedly${event.reason ? `: ${event.reason}` : ''}. `
+                        + 'Please try again.'
+                    ));
                 }
             };
         } catch (err) {
+            clearConnectionTimeout();
             logger.error('Failed to create WebSocket:', err);
             callbacks.onError(err instanceof Error ? err : new Error(String(err)));
         }
 
-        return () => this.cancelSubscription();
+        return () => {
+            clearConnectionTimeout();
+            this.cancelSubscription();
+        };
     }
 
     /**
