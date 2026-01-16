@@ -320,16 +320,17 @@ const InsightColumn = () => {
     const { t } = useTranslation();
 
     const roomName = useSelector((state: IReduxState) => getRoomName(state));
-    const apiUrl = useSelector((state: IReduxState) =>
+    const configApiUrl = useSelector((state: IReduxState) =>
         state['features/base/config'].moderatorPanel?.apiUrl);
+
+    // Use config URL or fallback to default for development
+    const apiUrl = configApiUrl || 'https://ai.aiqlick.com';
 
     const [ state, setState ] = useState<IInsightState>(initialState);
 
     // Configure the insight service with the API URL
     useEffect(() => {
-        if (apiUrl) {
-            insightService.setApiUrl(apiUrl);
-        }
+        insightService.setApiUrl(apiUrl);
     }, [ apiUrl ]);
 
     const handleGenerateInsight = useCallback(() => {
