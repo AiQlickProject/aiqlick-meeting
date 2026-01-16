@@ -481,7 +481,7 @@ export interface IConfig {
     microsoftApiApplicationClientID?: string;
     moderatedRoomServiceUrl?: string;
     moderatorPanel?: {
-        graphqlWsUrl?: string;
+        apiUrl?: string;
     };
     mouseMoveCallbackInterval?: number;
     noiseSuppression?: INoiseSuppressionConfig;

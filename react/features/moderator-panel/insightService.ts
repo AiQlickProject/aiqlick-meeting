@@ -2,29 +2,67 @@
 import logger from './logger';
 import { IMeetingInsightInput, MeetingInsightResult } from './types';
 
-// GraphQL subscription query
+// GraphQL subscription query - complete with all fields from API documentation
 const GENERATE_MEETING_INSIGHT_SUBSCRIPTION = `
 subscription GenerateMeetingInsight($input: MeetingInsightInput!) {
   generateMeetingInsight(input: $input) {
-    __typename
     ... on MeetingInsightProcessing {
       id
-      progress
+      status
       message
+      progress
     }
     ... on MeetingInsightSuccess {
       id
+      status
       insight {
+        id
+        meetingId
+        version
+        status
         fullReport
         skillsAssessment {
           overallSkillMatchPercentage
-          matchedSkills { skillName demonstratedLevel evidence }
+          skillSummary
+          matchedSkills {
+            skillName
+            demonstratedLevel
+            evidence
+            meetsRequirement
+          }
           missingSkills
+          additionalSkillsDemonstrated
         }
         communicationAnalysis {
           clarityScore
           confidenceScore
           professionalismScore
+          communicationStyle
+          strengths
+          areasForImprovement
+          notableQuotes
+          overallAssessment
+        }
+        keyTopicsSummary {
+          mainTopicsDiscussed {
+            topic
+            candidateResponseQuality
+            keyPoints
+          }
+          questionsAsked
+          candidateQuestions
+          topicsNotCovered
+        }
+        redFlagsAndConcerns {
+          inconsistencies {
+            description
+            severity
+            context
+          }
+          experienceGaps
+          behavioralConcerns
+          followUpQuestionsRecommended
+          overallRiskLevel
         }
         overallRecommendation {
           hireRecommendation
@@ -33,11 +71,22 @@ subscription GenerateMeetingInsight($input: MeetingInsightInput!) {
           strengthsSummary
           concernsSummary
         }
+        transcriptLength
+        processingTimeMs
+        llmModel
+        llmTokensUsed
+        generatedAt
       }
     }
     ... on MeetingInsightFailure {
       id
-      error { code message recoveryHint }
+      status
+      error {
+        code
+        message
+        timestamp
+        recoveryHint
+      }
     }
   }
 }
@@ -54,17 +103,22 @@ interface IInsightServiceCallbacks {
  * Uses graphql-ws protocol over native WebSocket.
  */
 class InsightService {
-    private wsUrl: string | null = null;
+    private apiUrl: string | null = null;
     private ws: WebSocket | null = null;
+    private wsUrl: string | null = null;
 
     /**
-     * Set the WebSocket URL for GraphQL subscriptions.
+     * Set the API URL and derive the WebSocket URL for GraphQL subscriptions.
      *
-     * @param {string} url - The WebSocket URL.
+     * @param {string} apiUrl - The base API URL (e.g., https://ai.aiqlick.com).
      * @returns {void}
      */
-    setWsUrl(url: string): void {
-        this.wsUrl = url;
+    setApiUrl(apiUrl: string): void {
+        this.apiUrl = apiUrl;
+
+        // Convert https://ai.aiqlick.com to wss://ai.aiqlick.com/graphql
+        this.wsUrl = apiUrl.replace(/^http/, 'ws') + '/graphql';
+        logger.info(`Insight service configured with API URL: ${apiUrl}, WS URL: ${this.wsUrl}`);
     }
 
     /**
@@ -79,7 +133,7 @@ class InsightService {
             callbacks: IInsightServiceCallbacks
     ): () => void {
         if (!this.wsUrl) {
-            callbacks.onError(new Error('GraphQL WebSocket URL not configured'));
+            callbacks.onError(new Error('API URL not configured. Please set moderatorPanel.apiUrl in config.'));
 
             return () => { /* no-op */ };
         }
@@ -88,12 +142,15 @@ class InsightService {
         this.cancelSubscription();
 
         try {
+            logger.info(`Connecting to GraphQL subscription at: ${this.wsUrl}`);
             this.ws = new WebSocket(this.wsUrl, 'graphql-transport-ws');
 
             this.ws.onopen = () => {
                 if (!this.ws) {
                     return;
                 }
+
+                logger.info('WebSocket connected, sending connection_init');
 
                 // Send connection init
                 this.ws.send(JSON.stringify({
@@ -106,9 +163,12 @@ class InsightService {
                 try {
                     const message = JSON.parse(event.data ?? '');
 
+                    logger.debug('Received message:', message.type);
+
                     switch (message.type) {
                     case 'connection_ack':
                         // Connection acknowledged, send subscription
+                        logger.info('Connection acknowledged, starting subscription');
                         if (this.ws) {
                             this.ws.send(JSON.stringify({
                                 id: '1',
@@ -124,7 +184,10 @@ class InsightService {
                     case 'next':
                         // Subscription data received
                         if (message.payload?.data?.generateMeetingInsight) {
-                            callbacks.onResult(message.payload.data.generateMeetingInsight);
+                            const result = message.payload.data.generateMeetingInsight;
+
+                            logger.debug('Received insight result:', result.__typename);
+                            callbacks.onResult(result);
                         }
                         break;
 
@@ -153,13 +216,13 @@ class InsightService {
 
             this.ws.onerror = () => {
                 logger.error('WebSocket error');
-                callbacks.onError(new Error('WebSocket connection error'));
+                callbacks.onError(new Error('WebSocket connection error. Please check network connectivity.'));
             };
 
             this.ws.onclose = (event: { code?: number; reason?: string; wasClean?: boolean }) => {
                 logger.info('WebSocket closed:', event.code, event.reason);
                 if (!event.wasClean) {
-                    callbacks.onError(new Error(`WebSocket closed unexpectedly: ${event.reason || ''}`));
+                    callbacks.onError(new Error(`WebSocket closed unexpectedly: ${event.reason || 'Connection lost'}`));
                 }
             };
         } catch (err) {

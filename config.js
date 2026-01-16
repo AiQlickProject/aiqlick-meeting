@@ -1457,6 +1457,13 @@ var config = {
     //     hideMuteAllButton: false,
     // },
 
+    // Moderator panel configuration for AI insights.
+    moderatorPanel: {
+        // Base API URL for the AI insights service.
+        // The GraphQL WebSocket endpoint will be derived as wss://{apiUrl}/graphql
+        apiUrl: 'https://ai.aiqlick.com'
+    },
+
     // Options related to the breakout rooms feature.
     // breakoutRooms: {
     //     // Hides the add breakout room button. This replaces `hideAddRoomButton`.

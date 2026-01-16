@@ -20,7 +20,7 @@ const useStyles = makeStyles()(theme => {
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            padding: theme.spacing(3),
+            padding: theme.spacing(2),
             overflow: 'auto'
         },
 
@@ -84,7 +84,6 @@ const useStyles = makeStyles()(theme => {
         },
 
         insightContainer: {
-            flex: 1,
             display: 'flex',
             flexDirection: 'column',
             gap: theme.spacing(2)
@@ -94,26 +93,34 @@ const useStyles = makeStyles()(theme => {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: theme.spacing(2)
+            marginBottom: theme.spacing(1)
+        },
+
+        headerTitle: {
+            ...theme.typography.labelBold,
+            color: theme.palette.text01
         },
 
         section: {
             backgroundColor: theme.palette.ui02,
             borderRadius: theme.shape.borderRadius,
-            padding: theme.spacing(2)
+            padding: theme.spacing(1.5)
         },
 
         sectionTitle: {
             ...theme.typography.labelBold,
             color: theme.palette.text01,
-            marginBottom: theme.spacing(1)
+            marginBottom: theme.spacing(1),
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
         },
 
         scoreRow: {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: `${theme.spacing(1)} 0`,
+            padding: `${theme.spacing(0.5)} 0`,
             borderBottom: `1px solid ${theme.palette.ui03}`,
 
             '&:last-child': {
@@ -123,12 +130,14 @@ const useStyles = makeStyles()(theme => {
 
         scoreLabel: {
             color: theme.palette.text02,
-            ...theme.typography.bodyShortRegular
+            ...theme.typography.bodyShortRegular,
+            fontSize: '12px'
         },
 
         scoreValue: {
             color: theme.palette.text01,
-            ...theme.typography.bodyShortBold
+            ...theme.typography.bodyShortBold,
+            fontSize: '12px'
         },
 
         recommendationBadge: {
@@ -136,6 +145,7 @@ const useStyles = makeStyles()(theme => {
             padding: `${theme.spacing(0.5)} ${theme.spacing(1)}`,
             borderRadius: theme.shape.borderRadius,
             ...theme.typography.labelBold,
+            fontSize: '11px',
             textTransform: 'uppercase'
         },
 
@@ -157,37 +167,137 @@ const useStyles = makeStyles()(theme => {
         summary: {
             color: theme.palette.text02,
             ...theme.typography.bodyShortRegular,
+            fontSize: '12px',
             marginTop: theme.spacing(1)
         },
 
         skillsList: {
             display: 'flex',
             flexDirection: 'column',
-            gap: theme.spacing(1)
+            gap: theme.spacing(0.5)
         },
 
         skillItem: {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: theme.spacing(1),
+            padding: theme.spacing(0.5),
             backgroundColor: theme.palette.ui01,
-            borderRadius: theme.shape.borderRadius
+            borderRadius: theme.shape.borderRadius,
+            fontSize: '12px'
         },
 
         skillName: {
             color: theme.palette.text01,
-            ...theme.typography.bodyShortRegular
+            display: 'flex',
+            alignItems: 'center',
+            gap: theme.spacing(0.5)
         },
 
         skillLevel: {
             color: theme.palette.text02,
-            ...theme.typography.labelRegular
+            fontSize: '11px'
+        },
+
+        skillMet: {
+            color: theme.palette.success02
+        },
+
+        skillNotMet: {
+            color: theme.palette.textError
         },
 
         missingSkills: {
             color: theme.palette.textError,
-            ...theme.typography.bodyShortRegular
+            fontSize: '12px',
+            marginTop: theme.spacing(1)
+        },
+
+        riskBadge: {
+            display: 'inline-block',
+            padding: `2px ${theme.spacing(1)}`,
+            borderRadius: theme.shape.borderRadius,
+            fontSize: '10px',
+            fontWeight: 'bold',
+            textTransform: 'uppercase'
+        },
+
+        riskLow: {
+            backgroundColor: theme.palette.success02,
+            color: theme.palette.text01
+        },
+
+        riskMedium: {
+            backgroundColor: theme.palette.warning02,
+            color: theme.palette.text01
+        },
+
+        riskHigh: {
+            backgroundColor: theme.palette.actionDanger,
+            color: theme.palette.text01
+        },
+
+        topicItem: {
+            padding: theme.spacing(0.5),
+            marginBottom: theme.spacing(0.5),
+            backgroundColor: theme.palette.ui01,
+            borderRadius: theme.shape.borderRadius,
+            fontSize: '12px'
+        },
+
+        topicHeader: {
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: theme.spacing(0.5)
+        },
+
+        topicName: {
+            color: theme.palette.text01,
+            fontWeight: 'bold'
+        },
+
+        qualityBadge: {
+            fontSize: '10px',
+            padding: '2px 6px',
+            borderRadius: '4px'
+        },
+
+        qualityExcellent: {
+            backgroundColor: theme.palette.success02,
+            color: theme.palette.text01
+        },
+
+        qualityGood: {
+            backgroundColor: theme.palette.action01,
+            color: theme.palette.text01
+        },
+
+        qualityFair: {
+            backgroundColor: theme.palette.warning02,
+            color: theme.palette.text01
+        },
+
+        qualityPoor: {
+            backgroundColor: theme.palette.actionDanger,
+            color: theme.palette.text01
+        },
+
+        keyPoints: {
+            color: theme.palette.text02,
+            fontSize: '11px',
+            paddingLeft: theme.spacing(1)
+        },
+
+        concernItem: {
+            color: theme.palette.text02,
+            fontSize: '12px',
+            padding: `${theme.spacing(0.5)} 0`,
+            borderBottom: `1px solid ${theme.palette.ui03}`,
+
+            '&:last-child': {
+                borderBottom: 'none'
+            }
         }
     };
 });
@@ -210,17 +320,17 @@ const InsightColumn = () => {
     const { t } = useTranslation();
 
     const roomName = useSelector((state: IReduxState) => getRoomName(state));
-    const graphqlWsUrl = useSelector((state: IReduxState) =>
-        state['features/base/config'].moderatorPanel?.graphqlWsUrl);
+    const apiUrl = useSelector((state: IReduxState) =>
+        state['features/base/config'].moderatorPanel?.apiUrl);
 
     const [ state, setState ] = useState<IInsightState>(initialState);
 
-    // Configure the insight service with the WebSocket URL
+    // Configure the insight service with the API URL
     useEffect(() => {
-        if (graphqlWsUrl) {
-            insightService.setWsUrl(graphqlWsUrl);
+        if (apiUrl) {
+            insightService.setApiUrl(apiUrl);
         }
-    }, [ graphqlWsUrl ]);
+    }, [ apiUrl ]);
 
     const handleGenerateInsight = useCallback(() => {
         if (!roomName) {
@@ -295,22 +405,43 @@ const InsightColumn = () => {
     }, [ roomName, t ]);
 
     const getRecommendationClass = (recommendation: string) => {
-        const lower = recommendation.toLowerCase();
+        const upper = recommendation.toUpperCase();
 
-        if (lower.includes('hire') && !lower.includes('no')) {
+        if (upper === 'STRONG_YES' || upper === 'YES') {
             return classes.recommendHire;
         }
-        if (lower.includes('no') || lower.includes('reject')) {
+        if (upper === 'STRONG_NO' || upper === 'NO') {
             return classes.recommendNoHire;
         }
 
         return classes.recommendMaybe;
     };
 
+    const getRiskClass = (risk: string) => {
+        switch (risk.toUpperCase()) {
+        case 'LOW': return classes.riskLow;
+        case 'MEDIUM': return classes.riskMedium;
+        case 'HIGH': return classes.riskHigh;
+        default: return classes.riskMedium;
+        }
+    };
+
+    const getQualityClass = (quality: string) => {
+        switch (quality.toUpperCase()) {
+        case 'EXCELLENT': return classes.qualityExcellent;
+        case 'GOOD': return classes.qualityGood;
+        case 'FAIR': return classes.qualityFair;
+        case 'POOR': return classes.qualityPoor;
+        default: return classes.qualityFair;
+        }
+    };
+
     const renderInsight = (insight: IMeetingInsight) => (
         <div className = { classes.insightContainer }>
             <div className = { classes.header }>
-                <span>{ t('moderatorPanel.analysisComplete', 'Analysis Complete') }</span>
+                <span className = { classes.headerTitle }>
+                    { t('moderatorPanel.analysisComplete', 'Analysis Complete') }
+                </span>
                 <Button
                     accessibilityLabel = { t('moderatorPanel.regenerate', 'Regenerate') }
                     icon = { IconRestore }
@@ -320,74 +451,157 @@ const InsightColumn = () => {
             </div>
 
             {/* Recommendation Section */}
-            <div className = { classes.section }>
-                <div className = { classes.sectionTitle }>
-                    { t('moderatorPanel.recommendation', 'Recommendation') }
+            {insight.overallRecommendation && (
+                <div className = { classes.section }>
+                    <div className = { classes.sectionTitle }>
+                        { t('moderatorPanel.recommendation', 'Recommendation') }
+                    </div>
+                    <span
+                        className = { cx(
+                            classes.recommendationBadge,
+                            getRecommendationClass(insight.overallRecommendation.hireRecommendation)
+                        ) }>
+                        { insight.overallRecommendation.hireRecommendation.replace('_', ' ') }
+                    </span>
+                    <div className = { classes.summary }>
+                        { insight.overallRecommendation.summary }
+                    </div>
                 </div>
-                <span
-                    className = { cx(
-                        classes.recommendationBadge,
-                        getRecommendationClass(insight.overallRecommendation.hireRecommendation)
-                    ) }>
-                    { insight.overallRecommendation.hireRecommendation }
-                </span>
-                <div className = { classes.summary }>
-                    { insight.overallRecommendation.summary }
-                </div>
-            </div>
+            )}
 
-            {/* Communication Scores */}
-            <div className = { classes.section }>
-                <div className = { classes.sectionTitle }>
-                    { t('moderatorPanel.communication', 'Communication') }
+            {/* Communication Scores - scores are 0-10 */}
+            {insight.communicationAnalysis && (
+                <div className = { classes.section }>
+                    <div className = { classes.sectionTitle }>
+                        { t('moderatorPanel.communication', 'Communication') }
+                    </div>
+                    <div className = { classes.scoreRow }>
+                        <span className = { classes.scoreLabel }>
+                            { t('moderatorPanel.clarity', 'Clarity') }
+                        </span>
+                        <span className = { classes.scoreValue }>
+                            { insight.communicationAnalysis.clarityScore }/10
+                        </span>
+                    </div>
+                    <div className = { classes.scoreRow }>
+                        <span className = { classes.scoreLabel }>
+                            { t('moderatorPanel.confidence', 'Confidence') }
+                        </span>
+                        <span className = { classes.scoreValue }>
+                            { insight.communicationAnalysis.confidenceScore }/10
+                        </span>
+                    </div>
+                    <div className = { classes.scoreRow }>
+                        <span className = { classes.scoreLabel }>
+                            { t('moderatorPanel.professionalism', 'Professionalism') }
+                        </span>
+                        <span className = { classes.scoreValue }>
+                            { insight.communicationAnalysis.professionalismScore }/10
+                        </span>
+                    </div>
+                    {insight.communicationAnalysis.communicationStyle && (
+                        <div className = { classes.summary }>
+                            <strong>Style:</strong> { insight.communicationAnalysis.communicationStyle }
+                        </div>
+                    )}
                 </div>
-                <div className = { classes.scoreRow }>
-                    <span className = { classes.scoreLabel }>
-                        { t('moderatorPanel.clarity', 'Clarity') }
-                    </span>
-                    <span className = { classes.scoreValue }>
-                        { insight.communicationAnalysis.clarityScore }%
-                    </span>
-                </div>
-                <div className = { classes.scoreRow }>
-                    <span className = { classes.scoreLabel }>
-                        { t('moderatorPanel.confidence', 'Confidence') }
-                    </span>
-                    <span className = { classes.scoreValue }>
-                        { insight.communicationAnalysis.confidenceScore }%
-                    </span>
-                </div>
-                <div className = { classes.scoreRow }>
-                    <span className = { classes.scoreLabel }>
-                        { t('moderatorPanel.professionalism', 'Professionalism') }
-                    </span>
-                    <span className = { classes.scoreValue }>
-                        { insight.communicationAnalysis.professionalismScore }%
-                    </span>
-                </div>
-            </div>
+            )}
 
             {/* Skills Assessment */}
-            <div className = { classes.section }>
-                <div className = { classes.sectionTitle }>
-                    { t('moderatorPanel.skills', 'Skills') } ({insight.skillsAssessment.overallSkillMatchPercentage}% { t('moderatorPanel.match', 'match') })
+            {insight.skillsAssessment && (
+                <div className = { classes.section }>
+                    <div className = { classes.sectionTitle }>
+                        <span>{ t('moderatorPanel.skills', 'Skills') }</span>
+                        <span>{ insight.skillsAssessment.overallSkillMatchPercentage }%</span>
+                    </div>
+                    <div className = { classes.skillsList }>
+                        {insight.skillsAssessment.matchedSkills?.slice(0, 5).map((skill, index) => (
+                            <div
+                                className = { classes.skillItem }
+                                key = { index }>
+                                <span className = { classes.skillName }>
+                                    <span className = { skill.meetsRequirement ? classes.skillMet : classes.skillNotMet }>
+                                        { skill.meetsRequirement ? '✓' : '✗' }
+                                    </span>
+                                    { skill.skillName }
+                                </span>
+                                <span className = { classes.skillLevel }>{ skill.demonstratedLevel }</span>
+                            </div>
+                        ))}
+                    </div>
+                    {insight.skillsAssessment.missingSkills?.length > 0 && (
+                        <div className = { classes.missingSkills }>
+                            Missing: { insight.skillsAssessment.missingSkills.slice(0, 3).join(', ') }
+                        </div>
+                    )}
                 </div>
-                <div className = { classes.skillsList }>
-                    {insight.skillsAssessment.matchedSkills.slice(0, 5).map((skill, index) => (
+            )}
+
+            {/* Key Topics */}
+            {insight.keyTopicsSummary
+                && insight.keyTopicsSummary.mainTopicsDiscussed
+                && insight.keyTopicsSummary.mainTopicsDiscussed.length > 0 && (
+                <div className = { classes.section }>
+                    <div className = { classes.sectionTitle }>
+                        { t('moderatorPanel.keyTopics', 'Key Topics') }
+                    </div>
+                    {insight.keyTopicsSummary.mainTopicsDiscussed.slice(0, 3).map((topic, index) => (
                         <div
-                            className = { classes.skillItem }
+                            className = { classes.topicItem }
                             key = { index }>
-                            <span className = { classes.skillName }>{ skill.skillName }</span>
-                            <span className = { classes.skillLevel }>{ skill.demonstratedLevel }</span>
+                            <div className = { classes.topicHeader }>
+                                <span className = { classes.topicName }>{ topic.topic }</span>
+                                <span
+                                    className = { cx(
+                                        classes.qualityBadge,
+                                        getQualityClass(topic.candidateResponseQuality)
+                                    ) }>
+                                    { topic.candidateResponseQuality }
+                                </span>
+                            </div>
+                            {topic.keyPoints?.length > 0 && (
+                                <div className = { classes.keyPoints }>
+                                    • { topic.keyPoints[0] }
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
-                {insight.skillsAssessment.missingSkills.length > 0 && (
-                    <div className = { classes.missingSkills }>
-                        { t('moderatorPanel.missingSkills', 'Missing') }: {insight.skillsAssessment.missingSkills.join(', ')}
+            )}
+
+            {/* Red Flags & Concerns */}
+            {insight.redFlagsAndConcerns && (
+                <div className = { classes.section }>
+                    <div className = { classes.sectionTitle }>
+                        <span>{ t('moderatorPanel.concerns', 'Concerns') }</span>
+                        <span
+                            className = { cx(
+                                classes.riskBadge,
+                                getRiskClass(insight.redFlagsAndConcerns.overallRiskLevel)
+                            ) }>
+                            { insight.redFlagsAndConcerns.overallRiskLevel } RISK
+                        </span>
                     </div>
-                )}
-            </div>
+                    {insight.redFlagsAndConcerns.behavioralConcerns?.slice(0, 2).map((concern, index) => (
+                        <div
+                            className = { classes.concernItem }
+                            key = { index }>
+                            • { concern }
+                        </div>
+                    ))}
+                    {insight.redFlagsAndConcerns.experienceGaps?.slice(0, 2).map((gap, index) => (
+                        <div
+                            className = { classes.concernItem }
+                            key = { `gap-${index}` }>
+                            • Gap: { gap }
+                        </div>
+                    ))}
+                    {(insight.redFlagsAndConcerns.behavioralConcerns?.length === 0
+                        && insight.redFlagsAndConcerns.experienceGaps?.length === 0) && (
+                        <div className = { classes.summary }>No significant concerns identified.</div>
+                    )}
+                </div>
+            )}
         </div>
     );
 
