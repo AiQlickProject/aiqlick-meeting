@@ -70,6 +70,11 @@ function devServerProxyBypass({ path }) {
         tpath = tpath.replace(/\/v1\/_cdn\/[^/]+\//, '/');
     }
 
+    // Serve local config.js and interface_config.js for development
+    if (tpath === '/config.js' || tpath === '/interface_config.js') {
+        return tpath;
+    }
+
     if (tpath.startsWith('/css/')
             || tpath.startsWith('/doc/')
             || tpath.startsWith('/fonts/')
