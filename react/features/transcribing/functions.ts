@@ -77,7 +77,7 @@ export function isRecorderTranscriptionsRunning(state: IReduxState) {
  */
 export function canAddTranscriber(state: IReduxState) {
     const { transcription } = state['features/base/config'];
-    const isTranscribingAllowed = isJwtFeatureEnabled(state, MEET_FEATURES.TRANSCRIPTION, false);
+    const isTranscribingAllowed = isJwtFeatureEnabled(state, MEET_FEATURES.TRANSCRIPTION, true);
 
     return Boolean(transcription?.enabled) && isTranscribingAllowed;
 }

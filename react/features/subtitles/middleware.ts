@@ -84,7 +84,7 @@ MiddlewareRegistry.register(store => next => action => {
         // Auto-start transcription when meeting joins if configured
         if (transcription?.autoStartTranscription
             && transcription?.enabled
-            && isJwtFeatureEnabled(state, MEET_FEATURES.TRANSCRIPTION, false)) {
+            && isJwtFeatureEnabled(state, MEET_FEATURES.TRANSCRIPTION, true)) {
             const preferredLanguage = transcription?.preferredLanguage || 'en';
 
             // Dispatch after a short delay to ensure conference is fully initialized
@@ -377,7 +377,7 @@ function _requestingSubtitlesChange(
         enabled);
 
     if (enabled && conference?.getTranscriptionStatus() === JitsiMeetJS.constants.transcriptionStatus.OFF
-        && isJwtFeatureEnabled(getState(), MEET_FEATURES.TRANSCRIPTION, false)) {
+        && isJwtFeatureEnabled(getState(), MEET_FEATURES.TRANSCRIPTION, true)) {
 
         if (!backendRecordingOn) {
             conference?.dial(TRANSCRIBER_DIAL_NUMBER)
