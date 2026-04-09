@@ -106,6 +106,7 @@ class InsightService {
     private apiUrl: string | null = null;
     private ws: WebSocket | null = null;
     private wsUrl: string | null = null;
+    private jwtToken: string | null = null;
 
     /**
      * Set the API URL and derive the WebSocket URL for GraphQL subscriptions.
@@ -122,6 +123,16 @@ class InsightService {
     }
 
     /**
+     * Set the JWT token for authenticated WebSocket connections.
+     *
+     * @param {string | undefined} token - The JWT token from the Jitsi session.
+     * @returns {void}
+     */
+    setJwtToken(token?: string): void {
+        this.jwtToken = token || null;
+    }
+
+    /**
      * Generate meeting insights via GraphQL subscription.
      *
      * @param {IMeetingInsightInput} input - The input containing meetingId and optional interviewId.
@@ -134,6 +145,14 @@ class InsightService {
     ): () => void {
         if (!this.wsUrl) {
             callbacks.onError(new Error('API URL not configured. Please set moderatorPanel.apiUrl in config.'));
+
+            return () => { /* no-op */ };
+        }
+
+        if (!this.jwtToken) {
+            callbacks.onError(new Error(
+                'Authentication required. Please sign in to generate meeting insights.'
+            ));
 
             return () => { /* no-op */ };
         }
@@ -173,10 +192,12 @@ class InsightService {
 
                 logger.info('WebSocket connected, sending connection_init');
 
-                // Send connection init
+                // Send connection init with auth token
                 this.ws.send(JSON.stringify({
                     type: 'connection_init',
-                    payload: {}
+                    payload: {
+                        Authorization: this.jwtToken ? `Bearer ${this.jwtToken}` : undefined
+                    }
                 }));
             };
 

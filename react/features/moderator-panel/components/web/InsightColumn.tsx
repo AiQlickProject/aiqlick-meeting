@@ -320,6 +320,8 @@ const InsightColumn = () => {
     const { t } = useTranslation();
 
     const roomName = useSelector((state: IReduxState) => getRoomName(state));
+    const jwtToken = useSelector((state: IReduxState) =>
+        state['features/base/jwt']?.jwt);
     const configApiUrl = useSelector((state: IReduxState) =>
         state['features/base/config'].moderatorPanel?.apiUrl);
 
@@ -328,12 +330,30 @@ const InsightColumn = () => {
 
     const [ state, setState ] = useState<IInsightState>(initialState);
 
-    // Configure the insight service with the API URL
+    // Configure the insight service with the API URL and JWT token
     useEffect(() => {
         insightService.setApiUrl(apiUrl);
     }, [ apiUrl ]);
 
+    useEffect(() => {
+        insightService.setJwtToken(jwtToken);
+    }, [ jwtToken ]);
+
     const handleGenerateInsight = useCallback(() => {
+        if (!jwtToken) {
+            setState(prev => ({
+                ...prev,
+                error: {
+                    code: 'AUTH_REQUIRED',
+                    message: t('moderatorPanel.authRequired', 'Authentication required'),
+                    recoveryHint: t('moderatorPanel.signInRequired',
+                        'Please sign in through AIQLick to generate meeting insights.')
+                }
+            }));
+
+            return;
+        }
+
         if (!roomName) {
             setState(prev => ({
                 ...prev,
