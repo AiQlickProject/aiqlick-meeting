@@ -442,7 +442,7 @@ const InsightColumn = () => {
                 }
             }
         );
-    }, [ roomName, t ]);
+    }, [ roomName, jwtToken, t ]);
 
     const getRecommendationClass = (recommendation: string) => {
         const upper = recommendation.toUpperCase();
