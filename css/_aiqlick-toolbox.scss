@@ -27,13 +27,17 @@
  * `.new-toolbox` markup, so we don't depend on hashed MUI classes.
  */
 
-// Hide the legacy Jitsi-style watermark (the large aiqlick logo on
-// the left edge of the meeting view). The reference UI in
-// aiqlick-frontend doesn't show a logo in-meeting — the brand sits in
-// the page chrome around the meeting, not on top of the video stage.
-.leftwatermark,
-.rightwatermark,
-.watermark {
+// Hide the watermark ONLY inside the in-meeting video stage so the
+// reskinned meeting view stays clean. Welcome page and prejoin still
+// render the brand mark — they're served by `.welcome-page` /
+// `.premeeting-screen` parents that don't contain `#videoconference_page`.
+//
+// `#videoconference_page` is the stable id Jitsi sets on the conference
+// container in `react/features/conference/components/web/Conference.tsx`,
+// so we scope to that and leave every other context untouched.
+#videoconference_page .leftwatermark,
+#videoconference_page .rightwatermark,
+#videoconference_page .watermark {
     display: none !important;
 }
 
