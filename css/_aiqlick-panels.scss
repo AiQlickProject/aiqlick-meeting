@@ -215,12 +215,22 @@
     border-top-width: 1px;
 }
 
-// Chat-specific overrides — chat messages, sender names, timestamps.
+// Chat-specific overrides. Jitsi structure (verified in
+// react/features/chat/components/web/Chat.tsx and css/_chat.scss):
+//   .chat-header                       header row
+//   .chat-message-group.local          a run of messages from the
+//                                      local user (right-aligned)
+//   .chat-message-group:not(.local)    a remote user's run
+//   .chat-message-group .chatmessage   individual bubble within the run
+//   .chatmessage .display-name         sender name (only on remote)
+//   .chatmessage .timestamp            timestamp under the bubble
+//   .chatmessage .usermessage          message body
 #sideToolbarContainer {
     // Chat header row
     .chat-header {
         border-bottom: 1px solid #1f2937 !important; // gray-800
         background-color: transparent !important;
+        padding: 0 16px !important;
 
         h2, h3 {
             color: #ffffff !important;
@@ -229,41 +239,120 @@
         }
     }
 
-    // Sent / received message bubbles
-    .chatmessage,
-    [class*='chatMessage'],
-    [class*='ChatMessage'] {
-        color: #f3f4f6;
+    // Tab strip (Chat / Closed Captions / Polls). Jitsi renders these
+    // as MUI Tabs — match the chat header bottom border, give the active
+    // tab an aiqlick primary indicator instead of the default Jitsi blue.
+    [role='tablist'] {
+        border-bottom: 1px solid #1f2937 !important;
 
-        // Sender display name above the message
-        .display-name,
-        [class*='displayName'] {
+        [role='tab'] {
             color: #9ca3af !important; // gray-400
-            font-size: 0.75rem !important;
+            transition: color 150ms ease;
+
+            &[aria-selected='true'] {
+                color: #ffffff !important;
+            }
+
+            &:hover {
+                color: #f3f4f6 !important;
+            }
         }
 
-        // Timestamp
-        .timestamp,
-        [class*='timestamp'] {
-            color: #6b7280 !important; // gray-500
+        // The MUI active-tab indicator (a thin coloured underline).
+        .MuiTabs-indicator,
+        [class*='indicator'] {
+            background-color: $aiqlickSecondary !important;
+            height: 2px !important;
+            border-radius: 1px;
         }
     }
 
-    // Local user's message bubble — primary tint background like the
-    // reference (`bg-primary/15 text-white`).
-    .chatmessage.localuser,
-    [class*='chatmessage'].localuser,
-    [class*='isLocal'] {
-        background-color: rgba(61, 82, 160, 0.18) !important; // primary / 18
-        color: #ffffff !important;
-        border-radius: 12px !important;
+    // Each conversation block (one per consecutive sender)
+    .chat-message-group {
+        margin-bottom: 8px;
+
+        // Local user's run — right-aligned, primary-tinted bubbles
+        // matching MeetingChat's `bg-primary/15 text-white` reference.
+        &.local {
+            .chatmessage {
+                background-color: rgba(61, 82, 160, 0.22) !important; // primary / 22
+                color: #ffffff !important;
+                border-radius: 14px 14px 4px 14px !important;
+                padding: 8px 12px !important;
+                max-width: 85% !important;
+                box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+            }
+
+            .timestamp {
+                color: #93a3c9 !important; // light primary tint
+                text-align: right;
+                font-size: 0.6875rem !important;
+                margin-top: 2px;
+            }
+        }
+
+        // Remote user's run — gray-800 bubble, sender name + timestamp
+        &:not(.local):not(.error) {
+            .chatmessage {
+                background-color: #1f2937 !important; // gray-800
+                color: #f3f4f6 !important;
+                border-radius: 14px 14px 14px 4px !important;
+                padding: 8px 12px !important;
+                max-width: 85% !important;
+            }
+
+            .display-name {
+                color: $aiqlickSecondary !important;
+                font-size: 0.75rem !important;
+                font-weight: 600;
+                margin-bottom: 2px;
+            }
+
+            .timestamp {
+                color: #6b7280 !important; // gray-500
+                font-size: 0.6875rem !important;
+                margin-top: 2px;
+            }
+        }
     }
 
-    // Remote user's message bubble — gray-800 surface.
-    .chatmessage.remote,
-    [class*='chatmessage'].remote {
-        background-color: #1f2937 !important; // gray-800
+    // Message body type — slightly tighter than default Jitsi 1rem
+    // since the bubble is narrower in our slate panel.
+    .chatmessage .usermessage {
+        font-size: 0.875rem !important;
+        line-height: 1.4 !important;
+        word-break: break-word;
+    }
+
+    // Recipient picker ("Everyone" dropdown above the input)
+    #select-chat-recipient,
+    [id*='chat-recipient'] {
+        background-color: #111827 !important; // gray-900
         color: #f3f4f6 !important;
-        border-radius: 12px !important;
+        border: 1px solid #1f2937 !important;
+        border-radius: 8px !important;
+    }
+
+    // Input row container at the bottom
+    .chat-input-container,
+    [class*='chatInput'] {
+        background-color: transparent !important;
+        border-top: 1px solid #1f2937 !important;
+    }
+
+    // Send button — primary square at the right of the input
+    [aria-label*='end' i][type='submit'],
+    [aria-label*='end' i] button,
+    button[class*='send'] {
+        background-color: $aiqlickPrimary !important;
+        border-radius: 10px !important;
+
+        &:hover {
+            background-color: $aiqlickSecondary !important;
+        }
+
+        svg {
+            fill: #ffffff;
+        }
     }
 }
