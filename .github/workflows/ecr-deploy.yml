@@ -60,6 +60,8 @@ jobs:
 
       - name: Deploy to EC2 via SSM
         run: |
+          set -euo pipefail
+
           echo "Deploying aiqlick-meeting to EC2..."
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${{ env.EC2_INSTANCE_ID }}" \
@@ -69,18 +71,41 @@ jobs:
             --output text \
             --query 'Command.CommandId')
 
+          echo "Command ID: $COMMAND_ID"
           echo "Waiting for deployment to complete..."
+
+          # Don't swallow the wait failure with `|| true` — we want to know.
+          # Capture exit code, then ALWAYS print the full result (status,
+          # stdout AND stderr) so the actual EC2 error lands in the workflow
+          # log even if the wait timed out or the command failed.
+          WAIT_EXIT=0
           aws ssm wait command-executed \
             --command-id "$COMMAND_ID" \
             --instance-id "${{ env.EC2_INSTANCE_ID }}" \
-            --region ${{ env.AWS_REGION }} || true
+            --region ${{ env.AWS_REGION }} || WAIT_EXIT=$?
 
+          echo "::group::SSM command result"
           aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
             --instance-id "${{ env.EC2_INSTANCE_ID }}" \
             --region ${{ env.AWS_REGION }} \
-            --query '[Status, StandardOutputContent]' \
-            --output text
+            --query '{Status:Status,ResponseCode:ResponseCode,Stdout:StandardOutputContent,Stderr:StandardErrorContent}' \
+            --output json
+          echo "::endgroup::"
+
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ env.EC2_INSTANCE_ID }}" \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Status' \
+            --output text)
+
+          if [ "$WAIT_EXIT" -ne 0 ] || [ "$STATUS" != "Success" ]; then
+            echo "::error::SSM deploy command did not succeed (Status=$STATUS, WaitExit=$WAIT_EXIT)"
+            exit 1
+          fi
+
+          echo "SSM deploy command completed successfully."
 
       - name: Deployment summary
         run: |
