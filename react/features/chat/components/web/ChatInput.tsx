@@ -32,8 +32,11 @@ const styles = (_theme: Theme, { _chatWidth }: IProps) => {
             transition: 'max-height 0.3s',
 
             '& #smileysContainer': {
-                backgroundColor: '#1A2556',
-                borderTop: '1px solid #ADBBDA'
+                // Match the surrounding chat panel surface; surface01 is now
+                // a dark slate (#0F172A), aligned with aiqlick-frontend's
+                // gray-950 panel chrome rather than the old navy.
+                backgroundColor: _theme.palette.ui01,
+                borderTop: `1px solid ${_theme.palette.ui03}`
             }
         },
         chatDisabled: {

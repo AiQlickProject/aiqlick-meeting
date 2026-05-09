@@ -77,4 +77,9 @@ $flagsImagePath: "../images/";
 @import 'reactions-menu';
 @import 'plan-limit';
 
+// aiqlick in-meeting toolbar reskin — must be imported AFTER toolbars,
+// premeeting, and reactions-menu so its overrides win specificity ties.
+@import 'aiqlick-toolbox';
+@import 'aiqlick-panels';
+
 /* Modules END */

@@ -1,0 +1,193 @@
+/**
+ * aiqlick in-meeting toolbar overrides — designed to match the
+ * MeetingToolbar reference in aiqlick-frontend/components/meeting/.
+ *
+ * Reference colour map (Tailwind class → hex):
+ *   gray-950  #030712   gray-700  #374151
+ *   gray-900  #111827   gray-600  #4b5563
+ *   gray-800  #1f2937   gray-500  #6b7280
+ *                       gray-400  #9ca3af
+ *                       gray-200  #e5e7eb
+ *   red-600   #dc2626   primary   #3D52A0
+ *   red-500   #ef4444   secondary #7091E6
+ *   red-400   #f87171
+ *
+ * Each toolbar button in the reference is:
+ *   relative flex items-center justify-center w-9 h-9 rounded-lg
+ *   transition-all duration-150 active:scale-95
+ *
+ *   default     bg-gray-700/70  hover bg-gray-600/80  text gray-200
+ *   highlighted bg-primary/20   hover bg-primary/30   text primary
+ *               ring-1 ring-primary/30
+ *   active      bg-red-500/90   hover bg-red-400/90   text white
+ *   danger      bg-red-600      hover bg-red-500      text white
+ *
+ * Imported last in main.scss so these rules outrank the default
+ * toolbox SCSS and any tss-react inline styles. Targets stable
+ * `.new-toolbox` markup, so we don't depend on hashed MUI classes.
+ */
+
+// Hide the legacy Jitsi-style watermark (the large aiqlick logo on
+// the left edge of the meeting view). The reference UI in
+// aiqlick-frontend doesn't show a logo in-meeting — the brand sits in
+// the page chrome around the meeting, not on top of the video stage.
+.leftwatermark,
+.rightwatermark,
+.watermark {
+    display: none !important;
+}
+
+.new-toolbox {
+    // Solid pill container behind the buttons. Matches the polished
+    // teams-style toolbar from the iframe-era reference: a single
+    // dark surface that holds all the buttons together so the row
+    // reads as one cohesive control rather than scattered chips.
+    .toolbox-content-wrapper {
+        background-color: #111827 !important; // gray-900, opaque
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 16px;
+        box-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.55);
+        padding: 6px;
+
+        // Default theme renders a pseudo-element strip; suppress it.
+        &::after {
+            background: transparent !important;
+            padding: 0 !important;
+        }
+    }
+
+    .toolbox-content-items {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 0 4px;
+    }
+
+    // Default toolbar button — transparent fill so the buttons
+    // visually live inside the pill rather than each being a separate
+    // chip. Hover lifts to a soft white wash. Toggled state uses the
+    // brand primary (matches MeetingToolbar's `bg-primary/20` +
+    // `ring-primary/30`).
+    .toolbox-icon:not(.hangup-button):not(.hangup-menu-button) {
+        background-color: transparent !important;
+        border-radius: 8px;
+        width: 40px;
+        height: 40px;
+        transition:
+            background-color 150ms ease,
+            color 150ms ease,
+            transform 100ms ease;
+
+        svg {
+            fill: #e5e7eb; // gray-200
+            transition: fill 150ms ease;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            &:hover {
+                background-color: rgba(255, 255, 255, 0.08) !important;
+
+                svg {
+                    fill: #ffffff;
+                }
+            }
+        }
+
+        &:active {
+            transform: scale(0.95);
+        }
+
+        // Toggled (panel/feature open) — primary highlight, mirrors
+        // `bg-primary/20 text-primary ring-primary/30`.
+        &.toggled {
+            background-color: rgba(61, 82, 160, 0.25) !important; // primary / 25
+            box-shadow: inset 0 0 0 1px rgba(112, 145, 230, 0.4);
+
+            svg {
+                fill: $aiqlickSecondary;
+            }
+
+            @media (hover: hover) and (pointer: fine) {
+                &:hover {
+                    background-color: rgba(61, 82, 160, 0.35) !important;
+                }
+            }
+        }
+    }
+
+    // Hangup buttons — solid red-600 → red-500 hover, matching the
+    // reference `danger` variant exactly. Slightly wider so the
+    // affordance reads as a clear "leave call" action.
+    div.hangup-button,
+    div.hangup-menu-button {
+        background-color: #dc2626 !important; // red-600
+        border-radius: 8px;
+        width: 56px;
+        height: 40px;
+        transition:
+            background-color 150ms ease,
+            transform 100ms ease;
+
+        svg {
+            fill: #ffffff;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            &:hover {
+                background-color: #ef4444; // red-500
+            }
+        }
+
+        &:active {
+            transform: scale(0.95);
+        }
+    }
+
+    // Recording / live state on top of any normal button (e.g. record
+    // button while recording) — match `active`/`recording` variant
+    // bg-red-500/90.
+    .toolbox-icon.recording,
+    .toolbox-icon.is-recording {
+        background-color: rgba(239, 68, 68, 0.9) !important; // red-500 / 90
+
+        svg {
+            fill: #ffffff !important;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            &:hover {
+                background-color: rgba(248, 113, 113, 0.9) !important; // red-400 / 90
+            }
+        }
+    }
+
+    // Notification badge (chat unread count, etc.). Reference:
+    // `bg-primary text-white text-[10px] min-w-[16px]`.
+    .toolbar-button-with-badge .badge-round {
+        bottom: -3px;
+        right: -3px;
+        background-color: $aiqlickPrimary;
+        color: #ffffff;
+        min-width: 16px;
+        height: 16px;
+        line-height: 16px;
+        font-size: 0.625rem;
+        font-weight: 700;
+        border: 2px solid rgba(17, 24, 39, 0.85);
+    }
+
+    // Vertical separators between button groups.
+    .toolbox-content [class*='separator'],
+    .toolbox-content .Separator {
+        background-color: rgba(255, 255, 255, 0.08);
+    }
+}
+
+// Mobile / narrow — same look but drop blur+shadow on weaker GPUs.
+.toolbox-content-mobile {
+    .toolbox-content-wrapper {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        box-shadow: none;
+    }
+}
