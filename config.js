@@ -1898,3 +1898,53 @@ if (enableJaaS) {
     config.dialInConfCodeUrl = 'https://conference-mapper.jitsi.net/v1/access';
     config.roomPasswordNumberOfDigits = 10; // skip re-adding it (do not remove comment)
 }
+
+// ─────────────────────────────────────────────────────────────────
+// SHARED RUNTIME PREFERENCES (applied everywhere — local dev AND
+// production once jitsi-deploy redeploys with custom-config.js).
+//
+// Tile-view by default — Jitsi otherwise stays in active-speaker view
+// until the participant count reaches a threshold, which is jarring
+// in 1-on-1 / small interview rooms where the user expects to see
+// every participant equally. The toolbar's tile-view button still
+// toggles freely from here.
+// ─────────────────────────────────────────────────────────────────
+config.startInTileView = true;
+
+// ─────────────────────────────────────────────────────────────────
+// LOCAL DEV OVERRIDES (only active when served by webpack-dev-server
+// from localhost — production serves config.js from
+// jitsi-deploy/jitsi-meet-cfg/web/config.js, not this file).
+//
+// Production's config.js is the base + custom-config.js appended.
+// Local dev only serves the base, so we have to re-create the
+// runtime-required pieces here.
+// ─────────────────────────────────────────────────────────────────
+if (typeof window !== 'undefined' && /^localhost(:|$)/.test(window.location.host)) {
+    // Skip prejoin device-picker so iteration is one tab-open away.
+    config.prejoinConfig = config.prejoinConfig || {};
+    config.prejoinConfig.enabled = false;
+
+    // lib-jitsi-meet's `setVideoCodecs` reads config.videoQuality.{av1,
+    // vp8, vp9, h264} as objects when negotiating media. Production's
+    // custom-config.js initialises them; without it, lib-jitsi-meet
+    // throws "Cannot read properties of undefined (reading
+    // 'setVideoCodecs')" the moment a peer connection is attached.
+    config.videoQuality = config.videoQuality || {};
+    config.videoQuality.av1  = config.videoQuality.av1  || {};
+    config.videoQuality.h264 = config.videoQuality.h264 || {};
+    config.videoQuality.vp8  = config.videoQuality.vp8  || {};
+    config.videoQuality.vp9  = config.videoQuality.vp9  || {};
+
+    // Other small init objects production sets; safe defaults here.
+    config.deploymentInfo = config.deploymentInfo || {};
+    config.transcription = config.transcription || {
+        enabled: true,
+        translationLanguages: [],
+        translationLanguagesHead: ['en'],
+        useAppLanguage: true,
+        preferredLanguage: 'en-US',
+        disableStartForAll: false,
+        autoCaptionOnRecord: false
+    };
+}
