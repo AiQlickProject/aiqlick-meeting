@@ -1,92 +1,93 @@
 # =============================================================================
-# AIQLick Meeting - Custom Jitsi Meet Web UI
-# Multi-stage Docker build based on community best practices
-# https://github.com/jitsi/docker-jitsi-meet/issues/1824
+# AIQLick Meeting — React shell that embeds Jitsi via the IFrame API
+# Multi-stage build: Vite build → nginx serve static assets
 # =============================================================================
 
-# Build argument for base image tag (allows pinning to specific version)
-ARG JITSI_WEB_TAG=stable-9823
-# Build version for cache busting (set by CI/CD)
+# Build version for cache busting (set by CI/CD).
 ARG BUILD_VERSION=dev
 
 # =============================================================================
-# Stage 1: Build the custom Jitsi Meet frontend
+# Stage 1: Build the React app with Vite
 # =============================================================================
 FROM node:22-slim AS builder
 
-# Re-declare ARG after FROM to make it available in this stage
 ARG BUILD_VERSION
 
 WORKDIR /app
 
-# Install build dependencies required for native modules
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy package files first for better layer caching
+# Copy package files first so the npm install layer is cached
+# whenever package*.json don't change.
 COPY package*.json ./
-COPY .npmrc ./
+COPY .npmrc* ./
 
-# Install dependencies with legacy peer deps (required for jitsi-meet)
-RUN npm ci --legacy-peer-deps
+RUN npm ci
 
-# Copy source code
+# Copy source and build.
 COPY . .
 
-# Inject build version into pwa-worker.js for cache busting
-RUN sed -i "s/__BUILD_VERSION__/${BUILD_VERSION}/g" pwa-worker.js
+# Inject the build version into the bundle for cache busting / debug.
+ENV VITE_BUILD_VERSION=$BUILD_VERSION
 
-# Build the application using the Makefile
-# This compiles webpack bundles and deploys assets to libs/
-RUN NODE_OPTIONS=--max-old-space-size=8192 make compile deploy
+RUN NODE_OPTIONS=--max-old-space-size=4096 npm run build
 
 # =============================================================================
-# Stage 2: Create production image based on official jitsi/web
-# This preserves nginx config, entrypoint scripts, and runtime setup
+# Stage 2: Serve static assets via nginx
 # =============================================================================
-FROM jitsi/web:${JITSI_WEB_TAG}
+FROM nginx:1.27-alpine AS runtime
 
 LABEL org.opencontainers.image.title="AIQLick Meeting"
-LABEL org.opencontainers.image.description="Custom Jitsi Meet UI for AIQLick recruitment platform"
+LABEL org.opencontainers.image.description="React shell embedding Jitsi via IFrame API for the AIQLick recruitment platform"
 LABEL org.opencontainers.image.source="https://github.com/AiQlickProject/aiqlick-meeting"
 
-# Copy built assets from builder stage, replacing official files
-# These are the compiled JavaScript bundles and static assets
-COPY --from=builder /app/libs /usr/share/jitsi-meet/libs
+# Replace the default site config so we always revalidate the entry
+# bundle (so deploys land on next page load) but keep hashed assets
+# under /assets/* on a long immutable cache.
+COPY <<'NGINX_CONF' /etc/nginx/conf.d/default.conf
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
 
-# Copy CSS
-COPY --from=builder /app/css/all.css /usr/share/jitsi-meet/css/all.css
+    root /usr/share/nginx/html;
+    index index.html;
 
-# Copy language files (translations)
-COPY --from=builder /app/lang /usr/share/jitsi-meet/lang
+    # Vite emits hashed filenames under /assets/* — safe to long-cache.
+    location /assets/ {
+        access_log off;
+        expires 1y;
+        add_header Cache-Control "public, immutable" always;
+        try_files $uri =404;
+    }
 
-# Copy images (logos, icons, backgrounds)
-COPY --from=builder /app/images /usr/share/jitsi-meet/images
+    # Brand assets — unhashed but rarely change. Short cache so logo
+    # swaps land quickly without manual cache-busting.
+    location /images/ {
+        access_log off;
+        expires 1h;
+        add_header Cache-Control "public, max-age=3600" always;
+        try_files $uri =404;
+    }
 
-# Copy sounds (notification sounds)
-COPY --from=builder /app/sounds /usr/share/jitsi-meet/sounds
+    # Entry HTML must always revalidate so deploys are visible on
+    # the next page load without forcing users to hard-refresh.
+    location = / {
+        add_header Cache-Control "no-cache" always;
+        try_files /index.html =404;
+    }
 
-# Copy fonts
-COPY --from=builder /app/fonts /usr/share/jitsi-meet/fonts
+    location = /index.html {
+        add_header Cache-Control "no-cache" always;
+    }
 
-# Copy static files
-COPY --from=builder /app/static /usr/share/jitsi-meet/static
+    # SPA fallback — any path that isn't a static file maps to index.html
+    # so room slugs like /aiqlick-general-... render via React.
+    location / {
+        try_files $uri /index.html;
+    }
+}
+NGINX_CONF
 
-# Copy resources (prosody plugins, etc.)
-COPY --from=builder /app/resources /usr/share/jitsi-meet/resources
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy HTML files
-COPY --from=builder /app/*.html /usr/share/jitsi-meet/
-
-# Copy root JS config files
-COPY --from=builder /app/config.js /usr/share/jitsi-meet/
-COPY --from=builder /app/interface_config.js /usr/share/jitsi-meet/
-COPY --from=builder /app/manifest.json /usr/share/jitsi-meet/
-COPY --from=builder /app/pwa-worker.js /usr/share/jitsi-meet/
-
-# The base image already exposes ports 80 and 443
-# and has the correct entrypoint for runtime configuration
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

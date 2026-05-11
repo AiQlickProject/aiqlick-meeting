@@ -1,87 +1,89 @@
-# <p align="center">Jitsi Meet</p>
+# aiqlick-meeting
 
-Jitsi Meet is a set of Open Source projects which empower users to use and deploy
-video conferencing platforms with state-of-the-art video quality and features.
+React shell that embeds the AIQLick Jitsi conferencing room via the
+[Jitsi IFrame API](https://jitsi.github.io/handbook/docs/dev-guide/dev-guide-iframe).
+All visible chrome (header, toolbar, side panels) is rendered by React;
+the iframe in the middle handles real-time media against the existing
+Jitsi backend at `book.aiqlick.com`.
 
-<hr />
+## Architecture
 
-<p align="center">
-<img src="https://raw.githubusercontent.com/jitsi/jitsi-meet/master/readme-img1.png" width="900" />
-</p>
+```
+Browser tab
+├── React shell (this app)            ← header, toolbar, side panels
+│   └── Jitsi IFrame API container
+│       └── <iframe src="https://book.aiqlick.com/<room>?jwt=…">
+│           └── Jitsi web frontend     ← managed by jitsi-deploy
+│               ↓ XMPP / WebRTC
+│           Prosody / Jicofo / JVB     ← managed by jitsi-deploy
+```
 
-<hr />
+This repo owns the React layer. The Jitsi backend, Prosody, JVB, and
+the EC2 instance that runs them live in
+[`jitsi-deploy`](https://github.com/AiQlickProject/jitsi-deploy).
 
-Amongst others here are the main features Jitsi Meet offers:
+## Stack
 
-* Support for all current browsers
-* Mobile applications
-* Web and native SDKs for integration
-* HD audio and video
-* Content sharing
-* Raise hand and reactions
-* Chat with private conversations
-* Polls
-* Virtual backgrounds
+- React 19 + TypeScript
+- Vite 6 (dev server + build)
+- Tailwind CSS (theme tokens match `aiqlick-frontend`)
+- Jitsi IFrame API (loaded at runtime from `book.aiqlick.com/external_api.js`)
+- lucide-react for icons
 
-And many more!
+## Local development
 
-## Using Jitsi Meet
+```bash
+npm install
+npm run dev
+```
 
-Using Jitsi Meet is straightforward, as it's browser based. Head over to [meet.jit.si](https://meet.jit.si) and give it a try. It's scalable and free to use. All you need is a Google, Facebook or GitHub account in order to start a meeting. All browsers are supported!
+Opens at `http://localhost:8080`. Join a room with a room slug in the URL:
 
-Using mobile? No problem, you can either use your mobile web browser or our fully-featured
-mobile apps:
+```
+http://localhost:8080/aiqlick-test
+```
 
-| Android | Android (F-Droid) | iOS |
-|:-:|:-:|:-:|
-| [<img src="resources/img/google-play-badge.png" height="50">](https://play.google.com/store/apps/details?id=org.jitsi.meet) | [<img src="resources/img/f-droid-badge.png" height="50">](https://f-droid.org/packages/org.jitsi.meet/) | [<img src="resources/img/appstore-badge.png" height="50">](https://itunes.apple.com/us/app/jitsi-meet/id1165103905) |
+If you need the meeting to start (production Prosody requires a JWT
+for moderator), append `?jwt=<token>` — grab one from `aiqlick-frontend`
+by clicking **Join** on a meeting and copying the URL from the new tab.
 
-If you are feeling adventurous and want to get an early scoop of the features as they are being
-developed you can also sign up for our open beta testing here:
+## Build
 
-* [Android](https://play.google.com/apps/testing/org.jitsi.meet)
-* [iOS](https://testflight.apple.com/join/isy6ja7S)
+```bash
+npm run build       # type-check + Vite production build → dist/
+npm run preview     # serve dist/ locally on :8080
+```
 
-## Running your own instance
+## Deploy
 
-If you'd like to run your own Jitsi Meet installation head over to the [handbook](https://jitsi.github.io/handbook/docs/devops-guide/) to get started.
+`.github/workflows/ecr-deploy.yml` builds the Docker image (Vite
+build → nginx serve), pushes to AWS ECR, and SSMs into the EC2 to
+restart the `web` container. Triggers on push to `main`.
 
-We provide Debian packages and a comprehensive Docker setup to make deployments as simple as possible.
-Advanced users also have the possibility of building all the components from source.
+## Recovery
 
-You can check the latest releases [here](https://jitsi.github.io/handbook/docs/releases).
+The previous Jitsi-fork codebase is preserved on the
+[`jitsi-fork-archive`](https://github.com/AiQlickProject/aiqlick-meeting/tree/jitsi-fork-archive)
+branch. To roll back, redeploy that branch — the Dockerfile and CI
+pipeline there still work against the same EC2 / ECR setup.
 
-## Jitsi as a Service
+## Files
 
-If you like the branding capabilities of running your own instance but you'd like
-to avoid dealing with the complexity of monitoring, scaling and updates, JaaS might be
-for you.
-
-[8x8 Jitsi as a Service (JaaS)](https://jaas.8x8.vc) is an enterprise-ready video meeting platform that allows developers, organizations and businesses to easily build and deploy video solutions. With Jitsi as a Service we now give you all the power of Jitsi running on our global platform so you can focus on building secure and branded video experiences.
-
-## Documentation
-
-All the Jitsi Meet documentation is available in [the handbook](https://jitsi.github.io/handbook/).
-
-## Security
-
-For a comprehensive description of all Jitsi Meet's security aspects, please check [this link](https://aiqlick.com/security).
-
-For a detailed description of Jitsi Meet's End-to-End Encryption (E2EE) implementation,
-please check [this link](https://aiqlick.com/e2ee-whitepaper/).
-
-For information on reporting security vulnerabilities in Jitsi Meet, see [SECURITY.md](./SECURITY.md).
-
-## Contributing
-
-If you are looking to contribute to Jitsi Meet, first of all, thank you! Please
-see our [guidelines for contributing](CONTRIBUTING.md).
-
-<br />
-<br />
-
-<footer>
-<p align="center" style="font-size: smaller;">
-Built with ❤️ by the Jitsi team at <a href="https://8x8.com" target="_blank">8x8</a> and our community.
-</p>
-</footer>
+```
+src/
+├── App.tsx                  Root component
+├── main.tsx                 Vite entry
+├── index.css                Tailwind directives
+├── pages/MeetingPage.tsx    Whole meeting view
+├── components/
+│   ├── MeetingHeader.tsx    Top bar — title, timer, participant count
+│   ├── MeetingToolbar.tsx   Bottom toolbar pill
+│   ├── ToolbarButton.tsx    Single rounded button used by the toolbar
+│   └── JitsiEmbed.tsx       Container for the Jitsi iframe
+├── hooks/
+│   └── useJitsiApi.ts       Loads external_api.js, instantiates Jitsi,
+│                            wires event listeners → React state
+└── lib/
+    ├── jitsi-iframe.ts      Lazy loader for external_api.js
+    └── parse-url.ts         Parses room name + JWT from window.location
+```
