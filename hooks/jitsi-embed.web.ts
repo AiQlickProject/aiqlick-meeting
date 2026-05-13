@@ -2,7 +2,12 @@ import type {
   CreateJitsiEmbedArgs,
   JitsiCommandName,
   JitsiEmbedHandle,
+  ParticipantInfo,
 } from "./jitsi-types";
+
+export interface CreateJitsiEmbedWebArgs extends CreateJitsiEmbedArgs {
+  container: HTMLElement;
+}
 
 /**
  * Web implementation — loads `external_api.js` from the Jitsi
@@ -19,6 +24,13 @@ interface JitsiMeetExternalAPI {
   dispose: () => void;
   executeCommand: (name: string, ...args: unknown[]) => void;
   addListener: (event: string, handler: (...args: unknown[]) => void) => void;
+  getParticipantsInfo?: () => Array<{
+    participantId: string;
+    displayName?: string;
+    formattedDisplayName?: string;
+  }>;
+  getNumberOfParticipants?: () => number;
+  myUserId?: () => string;
 }
 
 type JitsiMeetExternalAPICtor = new (
@@ -65,19 +77,19 @@ function loadExternalApi(domain: string): Promise<JitsiMeetExternalAPICtor> {
   return loaderPromise;
 }
 
-export function createJitsiEmbed(args: CreateJitsiEmbedArgs): JitsiEmbedHandle {
+export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandle {
   let api: JitsiMeetExternalAPI | null = null;
-  let attached: HTMLElement | null = null;
   let disposed = false;
+  const parent = args.container;
 
   const init = () => {
-    if (disposed || api || !attached) return;
+    if (disposed || api) return;
     loadExternalApi(args.domain)
       .then((Ctor) => {
-        if (disposed || !attached) return;
+        if (disposed) return;
         api = new Ctor(args.domain, {
           roomName: args.roomName,
-          parentNode: attached,
+          parentNode: parent,
           width: "100%",
           height: "100%",
           jwt: args.jwt ?? undefined,
@@ -85,6 +97,7 @@ export function createJitsiEmbed(args: CreateJitsiEmbedArgs): JitsiEmbedHandle {
           configOverwrite: {
             toolbarButtons: [],
             prejoinPageEnabled: false,
+            prejoinConfig: { enabled: false },
             disableDeepLinking: true,
             hideConferenceSubject: true,
             hideConferenceTimer: true,
@@ -94,9 +107,10 @@ export function createJitsiEmbed(args: CreateJitsiEmbedArgs): JitsiEmbedHandle {
             disableThirdPartyRequests: true,
             enableClosePage: false,
             disableProfile: true,
-            disableInviteFunctions: true,
             disableReactions: true,
             disablePolls: true,
+            // Jitsi's own participants pane is disabled — the wrapper
+            // renders its own ParticipantsPanel matching our chrome.
             participantsPane: { enabled: false },
             breakoutRooms: {
               hideAddRoomButton: true,
@@ -116,9 +130,19 @@ export function createJitsiEmbed(args: CreateJitsiEmbedArgs): JitsiEmbedHandle {
           },
         });
 
-        api.addListener("videoConferenceJoined", () =>
-          args.onStateChange({ isJoined: true }),
-        );
+        api.addListener("videoConferenceJoined", () => {
+          args.onStateChange({ isJoined: true });
+          // Force the display name even after join — Jitsi sometimes
+          // shows "Fellow Jitster" in chat when joining as a guest
+          // even though the JWT carries a name.
+          if (args.displayName) {
+            try {
+              api?.executeCommand("displayName", args.displayName);
+            } catch {
+              /* not fatal */
+            }
+          }
+        });
         api.addListener("videoConferenceLeft", () =>
           args.onStateChange({ isJoined: false }),
         );
@@ -145,6 +169,43 @@ export function createJitsiEmbed(args: CreateJitsiEmbedArgs): JitsiEmbedHandle {
             unreadChatCount: ev?.unreadCount ?? 0,
           });
         });
+        api.addListener("raiseHandUpdated", (...a: unknown[]) => {
+          const ev = a[0] as { id?: string; handRaised?: number } | undefined;
+          if (!ev) return;
+          // handRaised > 0 means raised (it's a timestamp), 0 means lowered.
+          // Only update *our* state when the event is for the local user.
+          const localId = api?.myUserId?.();
+          if (localId && ev.id && ev.id !== localId) return;
+          args.onStateChange({ isHandRaised: (ev.handRaised ?? 0) > 0 });
+        });
+
+        const refreshParticipants = () => {
+          try {
+            const localId = api?.myUserId?.();
+            const list = api?.getParticipantsInfo?.() ?? [];
+            const participants: ParticipantInfo[] = list.map((p) => ({
+              id: p.participantId,
+              displayName:
+                (p.displayName || p.formattedDisplayName || "").trim() || "Guest",
+              // Remote mute state isn't exposed by the iframe API; the
+              // panel relies on the local-only `isAudioMuted` / `isVideoMuted`
+              // for the local row, and shows a neutral icon for remotes.
+              audioMuted: false,
+              videoMuted: false,
+              isLocal: !!localId && p.participantId === localId,
+            }));
+            const count = api?.getNumberOfParticipants?.() ?? participants.length;
+            args.onStateChange({ participants, participantCount: count });
+          } catch {
+            /* ignore */
+          }
+        };
+
+        api.addListener("participantJoined", refreshParticipants);
+        api.addListener("participantLeft", refreshParticipants);
+        api.addListener("displayNameChange", refreshParticipants);
+        // Initial snapshot once we've actually joined.
+        api.addListener("videoConferenceJoined", refreshParticipants);
       })
       .catch((err: unknown) => {
         args.onStateChange({
@@ -153,14 +214,23 @@ export function createJitsiEmbed(args: CreateJitsiEmbedArgs): JitsiEmbedHandle {
       });
   };
 
+  init();
+
+  const commandMap: Partial<Record<JitsiCommandName, string>> = {
+    toggleAudio: "toggleAudio",
+    toggleVideo: "toggleVideo",
+    toggleScreenShare: "toggleShareScreen",
+    toggleTileView: "toggleTileView",
+    toggleChat: "toggleChat",
+    toggleRaiseHand: "toggleRaiseHand",
+    hangup: "hangup",
+    // toggleParticipants is handled locally — we render our own panel.
+  };
+
   return {
-    attach(el) {
-      if (attached === el) return;
-      attached = el;
-      init();
-    },
     execute(command: JitsiCommandName) {
-      api?.executeCommand(command === "toggleScreenShare" ? "toggleShareScreen" : command);
+      const mapped = commandMap[command];
+      if (mapped) api?.executeCommand(mapped);
     },
     dispose() {
       disposed = true;
@@ -170,7 +240,6 @@ export function createJitsiEmbed(args: CreateJitsiEmbedArgs): JitsiEmbedHandle {
         // Ignore double-dispose on fast refresh
       }
       api = null;
-      attached = null;
     },
   };
 }

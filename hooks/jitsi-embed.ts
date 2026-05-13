@@ -21,9 +21,6 @@ export function createJitsiEmbed(args: CreateJitsiEmbedArgs): JitsiEmbedHandle {
       "Mobile meeting client coming soon. Open this room from a browser to join now.",
   });
   return {
-    attach() {
-      /* native renderer attaches a native view via JitsiMeeting component */
-    },
     execute(_command: JitsiCommandName) {
       /* dispatchCommand on the native SDK */
     },

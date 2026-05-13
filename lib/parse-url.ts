@@ -6,23 +6,34 @@
 
 export function humanizeRoomName(slug: string): string {
   if (!slug) return "";
-  return slug
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(" ")
+  // aiqlick room slugs encode identity as trailing hex/UUID/timestamp
+  // segments — e.g. `aiqlick-interview-1fc22633-5c447d5a-1766859616903`.
+  // Strip those so the header reads "Aiqlick Interview" instead of
+  // the raw machine slug.
+  const isMachineToken = (t: string) =>
+    /^[0-9a-f]{6,}$/i.test(t) || /^\d{6,}$/.test(t);
+  const tokens = slug.replace(/[-_]+/g, " ").trim().split(/\s+/);
+  while (tokens.length > 1 && isMachineToken(tokens[tokens.length - 1])) {
+    tokens.pop();
+  }
+  return tokens
     .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
     .join(" ");
 }
 
+interface JwtPayload {
+  context?: {
+    subject?: string;
+    user?: { name?: string; moderator?: boolean };
+  };
+  moderator?: boolean;
+}
+
 /**
- * If aiqlick-backend includes the meeting title in the JWT's
- * `context.subject`, we'd rather use that than the humanized room
- * slug. Lightweight JWT decode (no signature check — we're just
- * reading metadata; signature is enforced by Prosody on the
- * conference side).
+ * Lightweight JWT decode (no signature check — we're just reading
+ * metadata; signature is enforced by Prosody on the conference side).
  */
-export function decodeJwtSubject(jwt: string | null | undefined): string | null {
+function decodeJwt(jwt: string | null | undefined): JwtPayload | null {
   if (!jwt) return null;
   try {
     const parts = jwt.split(".");
@@ -33,9 +44,31 @@ export function decodeJwtSubject(jwt: string | null | undefined): string | null 
       typeof atob === "function"
         ? atob(padded)
         : Buffer.from(padded, "base64").toString("utf8");
-    const data = JSON.parse(json) as { context?: { subject?: string } };
-    return data.context?.subject?.trim() || null;
+    return JSON.parse(json) as JwtPayload;
   } catch {
     return null;
   }
+}
+
+/**
+ * If aiqlick-backend includes the meeting title in the JWT's
+ * `context.subject`, we'd rather use that than the humanized room
+ * slug.
+ */
+export function decodeJwtSubject(jwt: string | null | undefined): string | null {
+  return decodeJwt(jwt)?.context?.subject?.trim() || null;
+}
+
+/**
+ * Top-level `moderator` claim or nested `context.user.moderator` —
+ * either marks the JWT bearer as the host. Used to choose the right
+ * connecting-state copy ("Waiting for host" vs "Connecting").
+ */
+export function decodeJwtIsModerator(jwt: string | null | undefined): boolean {
+  const data = decodeJwt(jwt);
+  return Boolean(data?.moderator || data?.context?.user?.moderator);
+}
+
+export function decodeJwtDisplayName(jwt: string | null | undefined): string | null {
+  return decodeJwt(jwt)?.context?.user?.name?.trim() || null;
 }

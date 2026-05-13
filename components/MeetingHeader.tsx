@@ -6,6 +6,7 @@ interface Props {
   title: string;
   participantCount: number;
   isJoined: boolean;
+  isModerator?: boolean;
 }
 
 /**
@@ -14,8 +15,19 @@ interface Props {
  * the aiqlick-frontend `MeetingHeader` so the meeting feels
  * continuous with the rest of the product on every platform.
  */
-export default function MeetingHeader({ title, participantCount, isJoined }: Props) {
+export default function MeetingHeader({
+  title,
+  participantCount,
+  isJoined,
+  isModerator = false,
+}: Props) {
   const elapsed = useElapsedSeconds(isJoined);
+  const statusLabel = isJoined
+    ? "Connected"
+    : isModerator
+      ? "Connecting…"
+      : "Waiting for host…";
+  const statusColor = isJoined ? "#22c55e" : isModerator ? "#22c55e" : "#f59e0b";
   return (
     <XStack
       height={56}
@@ -42,9 +54,9 @@ export default function MeetingHeader({ title, participantCount, isJoined }: Pro
             {title}
           </Text>
           <XStack alignItems="center" gap={6}>
-            <Circle size={6} backgroundColor="#22c55e" />
+            <Circle size={6} backgroundColor={statusColor} />
             <Text color="$gray9" fontSize={11}>
-              {isJoined ? "Connected" : "Connecting…"}
+              {statusLabel}
             </Text>
           </XStack>
         </YStack>

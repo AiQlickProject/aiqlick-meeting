@@ -5,7 +5,11 @@ import {
   VideoOff,
   ScreenShare,
   MessageSquare,
-  Grid2X2,
+  LayoutGrid,
+  Users,
+  Hand,
+  UserPlus,
+  Sparkles,
   PhoneOff,
 } from "@tamagui/lucide-icons";
 import { Pressable } from "react-native";
@@ -21,6 +25,11 @@ interface Props {
   onToggleScreenShare: () => void;
   onToggleTileView: () => void;
   onToggleChat: () => void;
+  onToggleParticipants: () => void;
+  onToggleRaiseHand: () => void;
+  onToggleInsights?: () => void;
+  insightsOpen?: boolean;
+  onInvite: () => void;
   onHangup: () => void;
 }
 
@@ -37,6 +46,11 @@ export default function MeetingToolbar({
   onToggleScreenShare,
   onToggleTileView,
   onToggleChat,
+  onToggleParticipants,
+  onToggleRaiseHand,
+  onToggleInsights,
+  insightsOpen,
+  onInvite,
   onHangup,
 }: Props) {
   return (
@@ -102,8 +116,38 @@ export default function MeetingToolbar({
           highlighted={state.isTileView}
           onPress={onToggleTileView}
         >
-          <Grid2X2 size={20} color={state.isTileView ? "#7091E6" : "#e5e7eb"} />
+          <LayoutGrid size={20} color={state.isTileView ? "#7091E6" : "#e5e7eb"} />
         </ToolbarButton>
+
+        <ToolbarButton
+          tooltip="Participants"
+          highlighted={state.isParticipantsOpen}
+          onPress={onToggleParticipants}
+        >
+          <Users size={20} color={state.isParticipantsOpen ? "#7091E6" : "#e5e7eb"} />
+        </ToolbarButton>
+
+        <ToolbarButton
+          tooltip={state.isHandRaised ? "Lower hand" : "Raise hand"}
+          highlighted={state.isHandRaised}
+          onPress={onToggleRaiseHand}
+        >
+          <Hand size={20} color={state.isHandRaised ? "#7091E6" : "#e5e7eb"} />
+        </ToolbarButton>
+
+        <ToolbarButton tooltip="Copy invite link" onPress={onInvite}>
+          <UserPlus size={20} color="#e5e7eb" />
+        </ToolbarButton>
+
+        {onToggleInsights && (
+          <ToolbarButton
+            tooltip="AI insights"
+            highlighted={insightsOpen}
+            onPress={onToggleInsights}
+          >
+            <Sparkles size={20} color={insightsOpen ? "#7091E6" : "#e5e7eb"} />
+          </ToolbarButton>
+        )}
 
         <View width={1} height={24} backgroundColor="rgba(255,255,255,0.1)" marginHorizontal={4} />
 

@@ -1,10 +1,16 @@
-import type { MutableRefObject } from "react";
-
 /**
  * Shared types between the platform implementations of the Jitsi
  * embed. Keeping the contract explicit means the outer React
  * components never have to branch on platform.
  */
+
+export interface ParticipantInfo {
+  id: string;
+  displayName: string;
+  audioMuted: boolean;
+  videoMuted: boolean;
+  isLocal: boolean;
+}
 
 export interface JitsiState {
   isJoined: boolean;
@@ -14,7 +20,9 @@ export interface JitsiState {
   isTileView: boolean;
   isChatOpen: boolean;
   isParticipantsOpen: boolean;
+  isHandRaised: boolean;
   participantCount: number;
+  participants: ParticipantInfo[];
   unreadChatCount: number;
   error: string | null;
 }
@@ -25,6 +33,8 @@ export interface JitsiCommands {
   toggleScreenShare: () => void;
   toggleTileView: () => void;
   toggleChat: () => void;
+  toggleParticipants: () => void;
+  toggleRaiseHand: () => void;
   hangup: () => void;
 }
 
@@ -34,16 +44,17 @@ export type JitsiCommandName =
   | "toggleScreenShare"
   | "toggleTileView"
   | "toggleChat"
+  | "toggleParticipants"
+  | "toggleRaiseHand"
   | "hangup";
 
 export interface JitsiEmbedHandle {
-  /** Returns a DOM element ref the web iframe can mount into. */
-  attach: (el: HTMLElement | null) => void;
   execute: (command: JitsiCommandName) => void;
   dispose: () => void;
 }
 
-export type JitsiEmbedRef = MutableRefObject<JitsiEmbedHandle | null>;
+/** Callback ref the web embed assigns to its container `<div>`. */
+export type AttachContainer = (el: HTMLElement | null) => void;
 
 export interface CreateJitsiEmbedArgs {
   domain: string;

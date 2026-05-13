@@ -1,16 +1,16 @@
 import { YStack, Text } from "tamagui";
 
-import type { JitsiEmbedRef } from "@/hooks/jitsi-types";
+import type { AttachContainer } from "@/hooks/jitsi-types";
 
 interface Props {
-  embed: JitsiEmbedRef;
+  attachContainer: AttachContainer;
 }
 
 /**
  * Native (iOS / Android) Jitsi embed. Placeholder UI while the
  * `@jitsi/react-native-sdk` integration lands. The component
  * signature matches the web sibling so the outer tree doesn't
- * branch on platform.
+ * branch on platform — `attachContainer` is ignored on native.
  */
 export default function JitsiEmbed(_: Props) {
   return (
