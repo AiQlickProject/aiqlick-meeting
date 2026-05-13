@@ -58,7 +58,7 @@ export default function MeetingRoute() {
     (typeof displayName === "string" ? displayName : null) ||
     decodeJwtDisplayName(jwtStr);
 
-  const { state, commands, attachContainer } = useJitsi({
+  const { state, commands, attachContainer, nativeMeetingProps } = useJitsi({
     roomName: room ?? "",
     jwt: jwtStr,
     displayName: resolvedDisplayName,
@@ -152,7 +152,10 @@ export default function MeetingRoute() {
           its parent is `flex: 1` and the panel is a fixed width sibling. */}
       <XStack flex={1}>
         <YStack flex={1} position="relative">
-          <JitsiEmbed attachContainer={attachContainer} />
+          <JitsiEmbed
+            attachContainer={attachContainer}
+            nativeMeetingProps={nativeMeetingProps}
+          />
 
           <YStack
             position="absolute"

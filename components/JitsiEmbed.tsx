@@ -1,34 +1,91 @@
-import { YStack, Text } from "tamagui";
+import { forwardRef } from "react";
+import { JitsiMeeting } from "@jitsi/react-native-sdk";
+import { StyleSheet } from "react-native";
 
-import type { AttachContainer } from "@/hooks/jitsi-types";
+import type {
+  JitsiEmbedProps,
+  NativeJitsiMeetingProps,
+  NativeJitsiRef,
+} from "@/hooks/jitsi-types";
 
-interface Props {
-  attachContainer: AttachContainer;
-}
+const NativeMeeting = forwardRef<NativeJitsiRef, NativeJitsiMeetingProps>(
+  function NativeMeeting(props, ref) {
+    return (
+      <JitsiMeeting
+        ref={ref}
+        room={props.roomName}
+        serverURL={`https://${props.domain}`}
+        token={props.jwt ?? undefined}
+        userInfo={
+          props.displayName
+            ? { displayName: props.displayName, email: "", avatarURL: "" }
+            : undefined
+        }
+        config={{
+          prejoinPageEnabled: false,
+          prejoinConfig: { enabled: false },
+          disableDeepLinking: true,
+          hideConferenceSubject: true,
+          hideConferenceTimer: true,
+          hideParticipantsStats: true,
+          startInTileView: true,
+          notifications: [],
+          disableThirdPartyRequests: true,
+          disableProfile: true,
+          disableReactions: true,
+          disablePolls: true,
+          toolbarButtons: [],
+          participantsPane: { enabled: false },
+        }}
+        flags={{
+          "call-integration.enabled": true,
+          "pip.enabled": true,
+          "welcomepage.enabled": false,
+        }}
+        eventListeners={{
+          onConferenceWillJoin: () => props.onStateChange({ error: null }),
+          onConferenceJoined: () =>
+            props.onStateChange({
+              isJoined: true,
+              participantCount: 1,
+              participants: props.displayName
+                ? [
+                    {
+                      id: "local",
+                      displayName: props.displayName,
+                      audioMuted: false,
+                      videoMuted: false,
+                      isLocal: true,
+                    },
+                  ]
+                : [],
+            }),
+          onConferenceLeft: () => props.onStateChange({ isJoined: false }),
+          onReadyToClose: () => props.onStateChange({ isJoined: false }),
+          onParticipantJoined: () =>
+            props.onStateChange({ participantCount: 2 }),
+        }}
+        style={styles.meeting}
+      />
+    );
+  },
+);
 
-/**
- * Native (iOS / Android) Jitsi embed. Placeholder UI while the
- * `@jitsi/react-native-sdk` integration lands. The component
- * signature matches the web sibling so the outer tree doesn't
- * branch on platform — `attachContainer` is ignored on native.
- */
-export default function JitsiEmbed(_: Props) {
+export default function JitsiEmbed({ nativeMeetingProps }: JitsiEmbedProps) {
+  if (!nativeMeetingProps) {
+    return null;
+  }
+
   return (
-    <YStack
-      flex={1}
-      alignItems="center"
-      justifyContent="center"
-      backgroundColor="$gray9"
-      gap="$3"
-      padding="$6"
-    >
-      <Text color="$color" fontSize="$5" fontWeight="600">
-        Mobile meeting client coming soon
-      </Text>
-      <Text color="$gray11" fontSize="$3" textAlign="center" maxWidth={420}>
-        Native Jitsi rendering on iOS and Android lands in the next
-        update. Use the browser version meanwhile.
-      </Text>
-    </YStack>
+    <NativeMeeting
+      {...nativeMeetingProps}
+      ref={nativeMeetingProps.meetingRef}
+    />
   );
 }
+
+const styles = StyleSheet.create({
+  meeting: {
+    flex: 1,
+  },
+});

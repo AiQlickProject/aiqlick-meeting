@@ -2,8 +2,11 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "5.0",
     "paths": {
+      "@jitsi/react-native-sdk": [
+        "./types/jitsi-react-native-sdk"
+      ],
       "@/*": [
         "./*"
       ]
@@ -16,5 +19,8 @@
   "include": [
     "**/*.ts",
     "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

@@ -1,8 +1,4 @@
-import type { AttachContainer } from "@/hooks/jitsi-types";
-
-interface Props {
-  attachContainer: AttachContainer;
-}
+import type { JitsiEmbedProps } from "@/hooks/jitsi-types";
 
 /**
  * Web embed container. The Jitsi IFrame API mounts its `<iframe>`
@@ -11,7 +7,7 @@ interface Props {
  * avoids the parent-vs-child useEffect ordering race we had with a
  * ref-based handshake.
  */
-export default function JitsiEmbed({ attachContainer }: Props) {
+export default function JitsiEmbed({ attachContainer }: JitsiEmbedProps) {
   return (
     <div
       ref={attachContainer}

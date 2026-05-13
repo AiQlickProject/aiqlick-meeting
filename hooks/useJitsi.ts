@@ -7,6 +7,7 @@ import type {
   JitsiCommands,
   JitsiEmbedHandle,
   JitsiState,
+  NativeJitsiRef,
 } from "./jitsi-types";
 import { createJitsiEmbed } from "./jitsi-embed";
 
@@ -44,7 +45,9 @@ interface UseJitsiArgs {
  */
 export function useJitsi({ roomName, jwt, displayName }: UseJitsiArgs) {
   const [state, setState] = useState<JitsiState>(INITIAL);
+  const stateRef = useRef<JitsiState>(INITIAL);
   const handleRef = useRef<JitsiEmbedHandle | null>(null);
+  const nativeMeetingRef = useRef<NativeJitsiRef | null>(null);
   const containerRef = useRef<HTMLElement | null>(null);
   const domain = (() => {
     if (typeof window !== "undefined") {
@@ -58,7 +61,11 @@ export function useJitsi({ roomName, jwt, displayName }: UseJitsiArgs) {
   })();
 
   const onStateChange = useCallback((patch: Partial<JitsiState>) => {
-    setState((s) => ({ ...s, ...patch }));
+    setState((s) => {
+      const next = { ...s, ...patch };
+      stateRef.current = next;
+      return next;
+    });
   }, []);
 
   const createHandle = useCallback(
@@ -76,6 +83,12 @@ export function useJitsi({ roomName, jwt, displayName }: UseJitsiArgs) {
         jwt,
         displayName,
         onStateChange,
+        ...(Platform.OS !== "web"
+          ? {
+              meetingRef: nativeMeetingRef,
+              getState: () => stateRef.current,
+            }
+          : {}),
         ...(container ? { container } : {}),
       } as Parameters<typeof createJitsiEmbed>[0]);
     },
@@ -122,5 +135,20 @@ export function useJitsi({ roomName, jwt, displayName }: UseJitsiArgs) {
     hangup: () => handleRef.current?.execute("hangup"),
   };
 
-  return { state, commands, attachContainer };
+  return {
+    state,
+    commands,
+    attachContainer,
+    nativeMeetingProps:
+      Platform.OS === "web"
+        ? undefined
+        : {
+            domain,
+            roomName,
+            jwt,
+            displayName,
+            onStateChange,
+            meetingRef: nativeMeetingRef,
+          },
+  };
 }

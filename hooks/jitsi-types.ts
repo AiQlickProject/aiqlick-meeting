@@ -63,3 +63,18 @@ export interface CreateJitsiEmbedArgs {
   displayName?: string | null;
   onStateChange: (patch: Partial<JitsiState>) => void;
 }
+
+export interface NativeJitsiRef {
+  close?: () => void;
+  setAudioMuted?: (muted: boolean) => void;
+  setVideoMuted?: (muted: boolean) => void;
+}
+
+export interface NativeJitsiMeetingProps extends CreateJitsiEmbedArgs {
+  meetingRef: React.RefObject<NativeJitsiRef | null>;
+}
+
+export interface JitsiEmbedProps {
+  attachContainer: AttachContainer;
+  nativeMeetingProps?: NativeJitsiMeetingProps;
+}

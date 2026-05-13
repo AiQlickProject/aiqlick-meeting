@@ -4,29 +4,57 @@
     "slug": "aiqlick-meeting",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./images/logo.svg",
+    "icon": "./assets/icon.png",
     "scheme": "aiqlick-meeting",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./images/logo.svg",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#030712"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
     },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.aiqlick.meeting",
+      "associatedDomains": [
+        "applinks:meet.aiqlick.com"
+      ],
       "infoPlist": {
         "NSCameraUsageDescription": "Aiqlick Meeting needs access to your camera to share video in meetings.",
-        "NSMicrophoneUsageDescription": "Aiqlick Meeting needs access to your microphone to share audio in meetings."
+        "NSMicrophoneUsageDescription": "Aiqlick Meeting needs access to your microphone to share audio in meetings.",
+        "NSBluetoothAlwaysUsageDescription": "Aiqlick Meeting uses Bluetooth to route meeting audio through wireless headsets.",
+        "NSLocalNetworkUsageDescription": "Aiqlick Meeting may use the local network to discover nearby meeting devices."
       }
     },
     "android": {
       "package": "com.aiqlick.meeting",
       "adaptiveIcon": {
-        "foregroundImage": "./images/logo.svg",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#030712"
       },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "meet.aiqlick.com",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
@@ -37,7 +65,8 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static"
+      "output": "static",
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
