@@ -1,47 +1,48 @@
 # =============================================================================
-# AIQLick Meeting — React shell that embeds Jitsi via the IFrame API
-# Multi-stage build: Vite build → nginx serve static assets
+# AIQLick Meeting — Expo + React Native + Tamagui app (web target)
+# Multi-stage: Metro export-web → nginx serve
+#
+# Mobile builds (iOS / Android) are produced separately by EAS Build,
+# not by this Dockerfile.
 # =============================================================================
 
-# Build version for cache busting (set by CI/CD).
 ARG BUILD_VERSION=dev
 
-# =============================================================================
-# Stage 1: Build the React app with Vite
-# =============================================================================
+# -----------------------------------------------------------------------------
+# Stage 1: Build the web bundle via `expo export --platform web`
+# -----------------------------------------------------------------------------
 FROM node:22-slim AS builder
 
 ARG BUILD_VERSION
 
 WORKDIR /app
 
-# Copy package files first so the npm install layer is cached
-# whenever package*.json don't change.
 COPY package*.json ./
 COPY .npmrc* ./
 
-RUN npm ci
+# Native modules need build tools available during install.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy source and build.
+RUN npm install --no-audit --no-fund
+
 COPY . .
 
-# Inject the build version into the bundle for cache busting / debug.
-ENV VITE_BUILD_VERSION=$BUILD_VERSION
+ENV EXPO_PUBLIC_BUILD_VERSION=$BUILD_VERSION
+ENV NODE_OPTIONS=--max-old-space-size=4096
 
-RUN NODE_OPTIONS=--max-old-space-size=4096 npm run build
+RUN npx expo export --platform web --output-dir dist
 
-# =============================================================================
-# Stage 2: Serve static assets via nginx
-# =============================================================================
+# -----------------------------------------------------------------------------
+# Stage 2: Serve the static export via nginx
+# -----------------------------------------------------------------------------
 FROM nginx:1.27-alpine AS runtime
 
 LABEL org.opencontainers.image.title="AIQLick Meeting"
-LABEL org.opencontainers.image.description="React shell embedding Jitsi via IFrame API for the AIQLick recruitment platform"
+LABEL org.opencontainers.image.description="Expo + React Native + Tamagui meeting client that embeds Jitsi (web target)"
 LABEL org.opencontainers.image.source="https://github.com/AiQlickProject/aiqlick-meeting"
 
-# Replace the default site config so we always revalidate the entry
-# bundle (so deploys land on next page load) but keep hashed assets
-# under /assets/* on a long immutable cache.
 COPY <<'NGINX_CONF' /etc/nginx/conf.d/default.conf
 server {
     listen 80 default_server;
@@ -51,16 +52,16 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
-    # Vite emits hashed filenames under /assets/* — safe to long-cache.
-    location /assets/ {
+    # Expo's static export hashes JS/CSS bundles under /_expo/static/*
+    # so they can be aggressively cached forever.
+    location /_expo/static/ {
         access_log off;
         expires 1y;
         add_header Cache-Control "public, immutable" always;
         try_files $uri =404;
     }
 
-    # Brand assets — unhashed but rarely change. Short cache so logo
-    # swaps land quickly without manual cache-busting.
+    # Brand assets — short cache so logo swaps land quickly.
     location /images/ {
         access_log off;
         expires 1h;
@@ -68,19 +69,17 @@ server {
         try_files $uri =404;
     }
 
-    # Entry HTML must always revalidate so deploys are visible on
-    # the next page load without forcing users to hard-refresh.
+    # Entry HTML must always revalidate so deploys land on next load.
     location = / {
         add_header Cache-Control "no-cache" always;
         try_files /index.html =404;
     }
-
     location = /index.html {
         add_header Cache-Control "no-cache" always;
     }
 
-    # SPA fallback — any path that isn't a static file maps to index.html
-    # so room slugs like /aiqlick-general-... render via React.
+    # SPA fallback — room slugs like /aiqlick-general-... map to the
+    # dynamic `[room].tsx` route via index.html.
     location / {
         try_files $uri /index.html;
     }

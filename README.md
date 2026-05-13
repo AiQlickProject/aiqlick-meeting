@@ -1,89 +1,112 @@
 # aiqlick-meeting
 
-React shell that embeds the AIQLick Jitsi conferencing room via the
-[Jitsi IFrame API](https://jitsi.github.io/handbook/docs/dev-guide/dev-guide-iframe).
-All visible chrome (header, toolbar, side panels) is rendered by React;
-the iframe in the middle handles real-time media against the existing
-Jitsi backend at `book.aiqlick.com`.
+Aiqlick's meeting client. **One codebase, three targets** — runs on
+the web, iOS, and Android from the same source. Built on Expo +
+React Native + React Native for Web + Tamagui.
 
 ## Architecture
 
 ```
-Browser tab
-├── React shell (this app)            ← header, toolbar, side panels
-│   └── Jitsi IFrame API container
-│       └── <iframe src="https://book.aiqlick.com/<room>?jwt=…">
-│           └── Jitsi web frontend     ← managed by jitsi-deploy
-│               ↓ XMPP / WebRTC
-│           Prosody / Jicofo / JVB     ← managed by jitsi-deploy
+Browser tab / iOS app / Android app
+└── React Native UI (this repo — same code, three platforms)
+    └── Jitsi embed (platform-split)
+        ├── web:        <iframe> via Jitsi IFrame API
+        └── native:     @jitsi/react-native-sdk (native WebRTC)
+            ↓ XMPP + WebRTC
+        Prosody / Jicofo / JVB   (managed by jitsi-deploy)
 ```
 
-This repo owns the React layer. The Jitsi backend, Prosody, JVB, and
-the EC2 instance that runs them live in
-[`jitsi-deploy`](https://github.com/AiQlickProject/jitsi-deploy).
+The Jitsi backend (Prosody, Jicofo, JVB) lives in
+[`jitsi-deploy`](https://github.com/AiQlickProject/jitsi-deploy). This
+repo owns only the client UI on every platform.
 
 ## Stack
 
-- React 19 + TypeScript
-- Vite 6 (dev server + build)
-- Tailwind CSS (theme tokens match `aiqlick-frontend`)
-- Jitsi IFrame API (loaded at runtime from `book.aiqlick.com/external_api.js`)
-- lucide-react for icons
+- **Expo SDK 52** — handles iOS / Android / Web builds + signing + OTA
+- **React Native 0.76** + React 18.3
+- **React Native for Web 0.19** — runs the same components on browsers
+- **Tamagui 1.119** — cross-platform styling, design tokens shared with `aiqlick-frontend`
+- **Expo Router 4** — file-based routing across all three targets
+- **Jitsi IFrame API** (web) + **@jitsi/react-native-sdk** (mobile)
 
 ## Local development
 
 ```bash
 npm install
-npm run dev
+npm run web        # opens http://localhost:8081
+npm run ios        # opens iOS simulator (requires Xcode)
+npm run android    # opens Android emulator (requires Android Studio)
+npm run start      # opens Expo dev menu, lets you pick a target
 ```
 
-Opens at `http://localhost:8080`. Join a room with a room slug in the URL:
-
-```
-http://localhost:8080/aiqlick-test
-```
-
-If you need the meeting to start (production Prosody requires a JWT
-for moderator), append `?jwt=<token>` — grab one from `aiqlick-frontend`
-by clicking **Join** on a meeting and copying the URL from the new tab.
+Both `web` and `ios`/`android` can run simultaneously — Expo's hot
+reload pushes changes to every connected device on save.
 
 ## Build
 
 ```bash
-npm run build       # type-check + Vite production build → dist/
-npm run preview     # serve dist/ locally on :8080
+npm run build:web       # production web bundle → dist/
+npm run typecheck       # tsc --noEmit
+```
+
+### Mobile builds
+
+Production mobile binaries are built by **EAS Build** (Expo
+Application Services). Set up once:
+
+```bash
+npm install -g eas-cli
+eas login
+eas build:configure
+```
+
+Then for each release:
+
+```bash
+eas build --platform ios       # TestFlight / App Store
+eas build --platform android   # Internal track / Play Store
 ```
 
 ## Deploy
 
-`.github/workflows/ecr-deploy.yml` builds the Docker image (Vite
-build → nginx serve), pushes to AWS ECR, and SSMs into the EC2 to
-restart the `web` container. Triggers on push to `main`.
+`.github/workflows/ecr-deploy.yml` builds the **web** Docker image
+(Metro `expo export --platform web` → nginx serve), pushes to AWS
+ECR, and SSMs into the EC2 to restart the `web` container. Triggers
+on push to `main`.
+
+**Mobile deployment is separate** — EAS Submit pushes to the App
+Store / Play Store. CI workflow for that is TBD.
 
 ## Recovery
 
-The previous Jitsi-fork codebase is preserved on the
-[`jitsi-fork-archive`](https://github.com/AiQlickProject/aiqlick-meeting/tree/jitsi-fork-archive)
-branch. To roll back, redeploy that branch — the Dockerfile and CI
-pipeline there still work against the same EC2 / ECR setup.
+Previous versions live on archive branches:
+- `jitsi-fork-archive` — the original Jitsi-Meet fork
+- The intermediate Vite + plain React shell was on `dev` at
+  `c3bd6d675` (cherry-pick if needed)
 
 ## Files
 
 ```
-src/
-├── App.tsx                  Root component
-├── main.tsx                 Vite entry
-├── index.css                Tailwind directives
-├── pages/MeetingPage.tsx    Whole meeting view
-├── components/
-│   ├── MeetingHeader.tsx    Top bar — title, timer, participant count
-│   ├── MeetingToolbar.tsx   Bottom toolbar pill
-│   ├── ToolbarButton.tsx    Single rounded button used by the toolbar
-│   └── JitsiEmbed.tsx       Container for the Jitsi iframe
-├── hooks/
-│   └── useJitsiApi.ts       Loads external_api.js, instantiates Jitsi,
-│                            wires event listeners → React state
-└── lib/
-    ├── jitsi-iframe.ts      Lazy loader for external_api.js
-    └── parse-url.ts         Parses room name + JWT from window.location
+app/                       Expo Router routes
+├── _layout.tsx            TamaguiProvider + Stack + theme
+├── index.tsx              Landing fallback ("no room specified")
+└── [room].tsx             The meeting page
+
+components/
+├── MeetingHeader.tsx      Title, timer, participant count
+├── MeetingToolbar.tsx     Bottom pill with all actions
+├── ToolbarButton.tsx      Single rounded button
+├── JitsiEmbed.tsx         Native: placeholder for native SDK
+└── JitsiEmbed.web.tsx     Web: <div> the iframe mounts into
+
+hooks/
+├── useJitsi.ts            Public hook — same shape on all platforms
+├── jitsi-embed.ts         Native impl (placeholder)
+├── jitsi-embed.web.ts     Web impl using JitsiMeetExternalAPI
+└── jitsi-types.ts         Shared contract
+
+lib/
+└── parse-url.ts           humanize room slug + decode JWT subject
+
+tamagui.config.ts          Design tokens mirroring aiqlick-frontend
 ```

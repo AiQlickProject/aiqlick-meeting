@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Aiqlick Meeting",
+    "slug": "aiqlick-meeting",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./images/logo.svg",
+    "scheme": "aiqlick-meeting",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./images/logo.svg",
+      "resizeMode": "contain",
+      "backgroundColor": "#030712"
+    },
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aiqlick.meeting",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Aiqlick Meeting needs access to your camera to share video in meetings.",
+        "NSMicrophoneUsageDescription": "Aiqlick Meeting needs access to your microphone to share audio in meetings."
+      }
+    },
+    "android": {
+      "package": "com.aiqlick.meeting",
+      "adaptiveIcon": {
+        "foregroundImage": "./images/logo.svg",
+        "backgroundColor": "#030712"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_CONNECT"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./images/favicon.svg"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "jitsiDomain": "book.aiqlick.com"
+    }
+  }
+}
