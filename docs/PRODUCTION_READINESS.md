@@ -5,6 +5,17 @@ runs in the browser via `expo start --web`. To ship it as a polished
 **iOS** and **Android** app from the same codebase, the following
 items have to land. Ordered by gating dependency.
 
+The web target is deployed from `main` through
+`.github/workflows/ecr-deploy.yml`: GitHub Actions builds the Expo
+static export into an nginx Docker image, pushes it to ECR, then
+restarts the EC2 `web` container through SSM. The active production
+client embeds the Jitsi backend at `book.aiqlick.com`.
+
+The lightweight CI path is `.github/workflows/ci.yml`, which runs on
+pull requests and pushes to `main` / `dev`. It installs with `npm ci`,
+runs Expo ESLint, and builds the web export. The old upstream Jitsi
+Lua / native SDK package workflows do not apply to this Expo app.
+
 The list is honest: items 1-3 unblock day-to-day mobile dev, 4-6 are
 polish, 7-10 are production hardening.
 

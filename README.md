@@ -46,8 +46,13 @@ reload pushes changes to every connected device on save.
 
 ```bash
 npm run build:web       # production web bundle → dist/
-npm run typecheck       # tsc --noEmit
+npm run lint            # Expo ESLint checks
+npm run typecheck       # optional TS check; currently tracks Tamagui typing debt
 ```
+
+GitHub CI runs `npm ci`, `npm run lint`, and `npm run build:web` on
+pull requests and on pushes to `main` / `dev`. The web export is the
+same build path used by the production Docker image.
 
 ### Mobile builds
 
@@ -74,13 +79,24 @@ eas build --platform android   # Internal track / Play Store
 ECR, and SSMs into the EC2 to restart the `web` container. Triggers
 on push to `main`.
 
+`main` is the production deployment branch for the web client served
+through the existing meeting infrastructure. To publish the current
+dev app to `book.aiqlick.com`, move or merge `main` to the wanted
+`dev` revision, then push `main`; the ECR workflow handles the build
+and EC2 restart.
+
+The app's Jitsi target remains `book.aiqlick.com` in `app.json` /
+`eas.json`, so the deployed client embeds the same Jitsi backend while
+replacing the web UI from `main`.
+
 **Mobile deployment is separate** — EAS Submit pushes to the App
-Store / Play Store. CI workflow for that is TBD.
+Store / Play Store.
 
 ## Recovery
 
 Previous versions live on archive branches:
 - `jitsi-fork-archive` — the original Jitsi-Meet fork
+- `dev` — active Expo + React Native + Tamagui app branch
 - The intermediate Vite + plain React shell was on `dev` at
   `c3bd6d675` (cherry-pick if needed)
 
