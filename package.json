@@ -47,6 +47,8 @@
     "@tamagui/babel-plugin": "^1.119.0",
     "@types/react": "~18.3.12",
     "babel-plugin-transform-inline-environment-variables": "^0.4.4",
+    "eslint": "^8.57.1",
+    "eslint-config-expo": "^8.0.1",
     "typescript": "~5.3.3"
   }
 }
