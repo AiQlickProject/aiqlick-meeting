@@ -1,0 +1,30 @@
+version: 0.2
+
+env:
+  variables:
+    NODE_VERSION: "22"
+  secrets-manager:
+    # You must store your Expo token in AWS Secrets Manager under this name
+    EXPO_TOKEN: "aiqlick/expo:EXPO_TOKEN"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: ${NODE_VERSION}
+    commands:
+      - echo "Installing dependencies..."
+      - npm install -g eas-cli
+      - npm ci
+
+  build:
+    commands:
+      - echo "Starting hybrid mobile build via Expo Application Services (EAS)..."
+      # The EXPO_TOKEN environment variable authenticates this headless environment
+      - eas build --platform all --profile production --non-interactive
+
+  post_build:
+    commands:
+      - echo "EAS build triggered successfully."
+      - echo "Check the Expo dashboard at https://expo.dev for build progress and artifacts."
+
+# No artifacts are exported directly from CodeBuild since EAS handles the compiled binaries
