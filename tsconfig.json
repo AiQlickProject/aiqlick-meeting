@@ -12,7 +12,6 @@
       ]
     },
     "types": [
-      "react-native",
       "node"
     ]
   },

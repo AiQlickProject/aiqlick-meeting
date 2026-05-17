@@ -100,6 +100,7 @@ export const twColors = {
 
 const config = createTamagui({
   ...defaultConfig,
+  disableStrictShorthands: true, // Allow longhand style props to coexist with shorthands
   themes: {
     ...defaultConfig.themes,
     light: {

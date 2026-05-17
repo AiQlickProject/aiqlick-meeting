@@ -62,7 +62,9 @@ function loadExternalApi(domain: string): Promise<JitsiMeetExternalAPICtor> {
   if (loaderPromise) return loaderPromise;
   loaderPromise = new Promise((resolve, reject) => {
     const s = document.createElement("script");
-    s.src = `https://${domain}/external_api.js`;
+    // Add a cache-busting timestamp to ensure we don't load a stale script
+    // after server configuration changes.
+    s.src = `https://${domain}/external_api.js?v=${Date.now()}`;
     s.async = true;
     s.onload = () =>
       window.JitsiMeetExternalAPI

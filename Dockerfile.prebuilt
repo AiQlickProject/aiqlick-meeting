@@ -1,0 +1,17 @@
+# Use official jitsi/web as base
+FROM jitsi/web:stable-9823
+
+LABEL org.opencontainers.image.title="AIQLick Meeting"
+LABEL org.opencontainers.image.description="Custom Jitsi Meet UI for AIQLick"
+
+# Copy pre-built assets
+COPY libs /usr/share/jitsi-meet/libs
+COPY css/all.css /usr/share/jitsi-meet/css/all.css
+COPY lang /usr/share/jitsi-meet/lang
+COPY images /usr/share/jitsi-meet/images
+COPY sounds /usr/share/jitsi-meet/sounds
+COPY fonts /usr/share/jitsi-meet/fonts
+COPY static /usr/share/jitsi-meet/static
+COPY resources /usr/share/jitsi-meet/resources
+COPY *.html /usr/share/jitsi-meet/
+COPY config.js interface_config.js manifest.json pwa-worker.js /usr/share/jitsi-meet/
