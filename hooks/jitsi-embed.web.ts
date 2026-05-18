@@ -1,3 +1,5 @@
+import { JITSI_BRANDING } from "@/lib/branding";
+
 import type {
   CreateJitsiEmbedArgs,
   JitsiCommandName,
@@ -133,6 +135,9 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
             },
           },
           interfaceConfigOverwrite: {
+            // App-driven brand identity (see lib/branding.ts). Spread first so
+            // the explicit overrides below always win on any key overlap.
+            ...JITSI_BRANDING,
             TOOLBAR_BUTTONS: [],
             SHOW_JITSI_WATERMARK: false,
             SHOW_WATERMARK_FOR_GUESTS: false,
