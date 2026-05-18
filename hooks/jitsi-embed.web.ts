@@ -82,7 +82,13 @@ function loadExternalApi(domain: string): Promise<JitsiMeetExternalAPICtor> {
 export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandle {
   let api: JitsiMeetExternalAPI | null = null;
   let disposed = false;
+  let isJoined = false;
+  let isTranscribing = false;
+  const transcriptionTimers: Array<ReturnType<typeof setTimeout>> = [];
   const parent = args.container;
+  const clearTranscriptionTimers = () => {
+    transcriptionTimers.splice(0).forEach(clearTimeout);
+  };
 
   const init = () => {
     if (disposed || api) return;
@@ -105,6 +111,12 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
             hideConferenceTimer: true,
             hideParticipantsStats: true,
             startInTileView: true,
+            transcription: {
+              enabled: true,
+              autoStartTranscription: true,
+              autoCaptionOnTranscribe: true,
+              disableStartForAll: false,
+            },
             notifications: [],
             disableThirdPartyRequests: true,
             enableClosePage: false,
@@ -132,7 +144,24 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
           },
         });
 
+        const ensureTranscriptionStarted = () => {
+          if (disposed || !isJoined || isTranscribing) return;
+          try {
+            api?.executeCommand("setSubtitles", true);
+          } catch (err) {
+            console.warn("[Jitsi] auto transcription request failed:", err);
+          }
+        };
+
+        const scheduleTranscriptionStart = () => {
+          clearTranscriptionTimers();
+          for (const delay of [1500, 5000, 10000]) {
+            transcriptionTimers.push(setTimeout(ensureTranscriptionStarted, delay));
+          }
+        };
+
         api.addListener("videoConferenceJoined", () => {
+          isJoined = true;
           args.onStateChange({ isJoined: true });
           // Force the display name even after join — Jitsi sometimes
           // shows "Fellow Jitster" in chat when joining as a guest
@@ -144,10 +173,21 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
               /* not fatal */
             }
           }
+          scheduleTranscriptionStart();
         });
-        api.addListener("videoConferenceLeft", () =>
-          args.onStateChange({ isJoined: false }),
-        );
+        api.addListener("videoConferenceLeft", () => {
+          isJoined = false;
+          isTranscribing = false;
+          clearTranscriptionTimers();
+          args.onStateChange({ isJoined: false, isTranscribing: false });
+        });
+        api.addListener("transcribingStatusChanged", (...a: unknown[]) => {
+          const ev = a[0] as { on?: boolean } | undefined;
+          isTranscribing = !!ev?.on;
+          args.onStateChange({ isTranscribing });
+          if (isTranscribing) clearTranscriptionTimers();
+          else if (isJoined) scheduleTranscriptionStart();
+        });
         api.addListener("audioMuteStatusChanged", (...a: unknown[]) => {
           const ev = a[0] as { muted?: boolean } | undefined;
           args.onStateChange({ isAudioMuted: !!ev?.muted });
@@ -236,6 +276,7 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
     },
     dispose() {
       disposed = true;
+      clearTranscriptionTimers();
       try {
         api?.dispose();
       } catch {

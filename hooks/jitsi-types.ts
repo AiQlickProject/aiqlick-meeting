@@ -18,6 +18,7 @@ export interface JitsiState {
   isVideoMuted: boolean;
   isScreenSharing: boolean;
   isTileView: boolean;
+  isTranscribing: boolean;
   isChatOpen: boolean;
   isParticipantsOpen: boolean;
   isHandRaised: boolean;

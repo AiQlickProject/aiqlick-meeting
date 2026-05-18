@@ -17,6 +17,7 @@ const INITIAL: JitsiState = {
   isVideoMuted: false,
   isScreenSharing: false,
   isTileView: true,
+  isTranscribing: false,
   isChatOpen: false,
   isParticipantsOpen: false,
   isHandRaised: false,
