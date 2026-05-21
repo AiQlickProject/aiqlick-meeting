@@ -6,6 +6,7 @@ import { XStack, YStack } from "tamagui";
 import InsightsPanel from "@/components/InsightsPanel";
 import InviteToast from "@/components/InviteToast";
 import ParticipantsPanel from "@/components/ParticipantsPanel";
+import TranscriptPanel from "@/components/TranscriptPanel";
 
 import MeetingHeader from "@/components/MeetingHeader";
 import MeetingToolbar from "@/components/MeetingToolbar";
@@ -93,6 +94,7 @@ export default function MeetingRoute() {
 
   const [inviteStatus, setInviteStatus] = useState<"idle" | "copied" | "failed">("idle");
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
+  const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
 
   const meetingIdStr = typeof meetingId === "string" ? meetingId : null;
 
@@ -131,12 +133,15 @@ export default function MeetingRoute() {
   })();
 
   // Only one side panel is visible at a time. Toggling one closes the
-  // other so the video stage doesn't get squeezed below a usable size.
-  const sidePanel: "participants" | "insights" | null = state.isParticipantsOpen
-    ? "participants"
-    : isInsightsOpen
-      ? "insights"
-      : null;
+  // others so the video stage doesn't get squeezed below a usable size.
+  const sidePanel: "participants" | "insights" | "transcript" | null =
+    state.isParticipantsOpen
+      ? "participants"
+      : isInsightsOpen
+        ? "insights"
+        : isTranscriptOpen
+          ? "transcript"
+          : null;
 
   return (
     <YStack flex={1} backgroundColor="$background">
@@ -174,11 +179,20 @@ export default function MeetingRoute() {
               onToggleChat={commands.toggleChat}
               onToggleParticipants={() => {
                 if (isInsightsOpen) setIsInsightsOpen(false);
+                if (isTranscriptOpen) setIsTranscriptOpen(false);
                 commands.toggleParticipants();
               }}
               onToggleRaiseHand={commands.toggleRaiseHand}
+              onToggleSubtitles={commands.toggleSubtitles}
+              onToggleTranscript={() => {
+                if (state.isParticipantsOpen) commands.toggleParticipants();
+                if (isInsightsOpen) setIsInsightsOpen(false);
+                setIsTranscriptOpen((v) => !v);
+              }}
+              transcriptOpen={isTranscriptOpen}
               onToggleInsights={() => {
                 if (state.isParticipantsOpen) commands.toggleParticipants();
+                if (isTranscriptOpen) setIsTranscriptOpen(false);
                 setIsInsightsOpen((v) => !v);
               }}
               insightsOpen={isInsightsOpen}
@@ -203,6 +217,15 @@ export default function MeetingRoute() {
               meetingId={meetingIdStr}
               isOpen
               onClose={() => setIsInsightsOpen(false)}
+            />
+          </YStack>
+        )}
+        {sidePanel === "transcript" && (
+          <YStack width={360} backgroundColor="$background">
+            <TranscriptPanel
+              state={state}
+              onClose={() => setIsTranscriptOpen(false)}
+              filenameBase={title}
             />
           </YStack>
         )}

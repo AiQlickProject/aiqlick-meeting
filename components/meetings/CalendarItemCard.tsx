@@ -1,4 +1,5 @@
 import { Briefcase, Calendar, Clock, User } from "@tamagui/lucide-icons";
+import { Pressable } from "react-native";
 import { Text, View, XStack, YStack } from "tamagui";
 
 import { TWAvatar } from "@/components/ux/TWAvatar";
@@ -17,18 +18,17 @@ interface Props {
 
 /**
  * 1:1 port of `components/meetings/CalendarItemCard.tsx` in
- * aiqlick-frontend. Anatomy (top-down, left-right):
+ * aiqlick-frontend. The whole card is now a single click target that
+ * navigates to the meeting detail (no more redundant "View Details"
+ * button — the card *is* the link). Join is the only inline action,
+ * surfaced when a `meetingUrl` is present and `onJoin` is wired up.
  *
  *   ┌──────────┬───────────────────────────────────┐
  *   │  avatar  │  Title  [Interview/Meeting badge] │  STATUS chip ─►
  *   │   (lg)   │  subtitle (gray)                  │
  *   │          │  📅 date    🕐 time · duration    │
- *   │          │  [View Details]    (Join?)        │
+ *   │          │                          ( Join ) │
  *   └──────────┴───────────────────────────────────┘
- *
- * Join is omitted from the card by default — the frontend lives in
- * the detail view. We only render it inline when the caller passes
- * `onJoin`, and even then only when there's a `meetingUrl`.
  */
 export default function CalendarItemCard({ event, isJoining, onJoin, onDetails }: Props) {
   const isInterview = event.type === "INTERVIEW";
@@ -49,8 +49,18 @@ export default function CalendarItemCard({ event, isJoining, onJoin, onDetails }
   const canJoin = !!event.meetingUrl && onJoin;
 
   return (
-    <TWCard shadow="sm">
+    // TWCard with isHoverable provides the lift-on-hover effect for
+    // the whole card. The actual click target is the inner Pressable
+    // wrapping just the main content row — so tapping the Join button
+    // (which sits *outside* that inner Pressable) doesn't also trigger
+    // the navigate-to-detail. Cross-platform safe: no event-bubbling
+    // tricks needed.
+    <TWCard shadow="sm" isHoverable={!!onDetails}>
       <TWCardBody gap={12}>
+        <Pressable
+          onPress={onDetails}
+          style={{ marginHorizontal: -4, paddingHorizontal: 4, borderRadius: 8 }}
+        >
         <XStack alignItems="flex-start" gap={14}>
           <TWAvatar
             name={avatarName}
@@ -119,29 +129,22 @@ export default function CalendarItemCard({ event, isJoining, onJoin, onDetails }
               ) : null}
             </XStack>
 
-            <XStack gap={8} alignItems="center" marginTop={2}>
-              {onDetails && (
-                <TWButton
-                  label="View Details"
-                  variant="primary"
-                  color="primary"
-                  size="sm"
-                  onPress={onDetails}
-                />
-              )}
-              {canJoin && (
-                <TWButton
-                  label="Join"
-                  variant="flat"
-                  color="success"
-                  size="sm"
-                  isLoading={isJoining}
-                  onPress={onJoin}
-                />
-              )}
-            </XStack>
           </YStack>
         </XStack>
+        </Pressable>
+
+        {canJoin && (
+          <XStack justifyContent="flex-end" marginTop={2}>
+            <TWButton
+              label="Join"
+              variant="primary"
+              color="success"
+              size="sm"
+              isLoading={isJoining}
+              onPress={onJoin}
+            />
+          </XStack>
+        )}
       </TWCardBody>
     </TWCard>
   );

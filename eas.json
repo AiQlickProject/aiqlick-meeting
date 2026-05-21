@@ -11,7 +11,7 @@
       "env": {
         "APP_ENV": "development",
         "EXPO_PUBLIC_API_URL": "http://localhost:3000",
-        "EXPO_PUBLIC_JITSI_DOMAIN": "book.aiqlick.com"
+        "EXPO_PUBLIC_JITSI_DOMAIN": "meet.aiqlick.com"
       },
       "ios": {
         "simulator": true
@@ -26,7 +26,7 @@
       "env": {
         "APP_ENV": "preview",
         "EXPO_PUBLIC_API_URL": "https://api-dev.aiqlick.com",
-        "EXPO_PUBLIC_JITSI_DOMAIN": "book.aiqlick.com"
+        "EXPO_PUBLIC_JITSI_DOMAIN": "meet.aiqlick.com"
       },
       "android": {
         "buildType": "apk"
@@ -38,7 +38,7 @@
       "env": {
         "APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://api.aiqlick.com",
-        "EXPO_PUBLIC_JITSI_DOMAIN": "book.aiqlick.com"
+        "EXPO_PUBLIC_JITSI_DOMAIN": "meet.aiqlick.com"
       },
       "android": {
         "buildType": "app-bundle"

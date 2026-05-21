@@ -3,24 +3,22 @@ import {
   Calendar as CalendarIcon,
   CalendarDays,
   LayoutList,
-  LogOut,
   Plus,
   Search,
 } from "@tamagui/lucide-icons";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable } from "react-native";
+import { ActivityIndicator, Image, Platform, Pressable } from "react-native";
 import { ScrollView, View, XStack, YStack, Text } from "tamagui";
 
 import AuthGuard from "@/components/AuthGuard";
+import ProfileSwitcher from "@/components/ProfileSwitcher";
 import CalendarItemCard from "@/components/meetings/CalendarItemCard";
 import CreateMeetingModal from "@/components/meetings/CreateMeetingModal";
 import MeetingsCalendar from "@/components/meetings/MeetingsCalendar";
-import { TWAvatar } from "@/components/ux/TWAvatar";
 import { TWButton } from "@/components/ux/TWButton";
 import { TWInput } from "@/components/ux/TWInput";
 import { TWSelect } from "@/components/ux/TWSelect";
-import { useUserAuth } from "@/contexts/UserAuthProvider";
 import {
   GET_MY_CALENDAR,
   GET_UPCOMING_EVENTS,
@@ -58,7 +56,6 @@ export default function HomeIndex() {
 function Dashboard() {
   const router = useRouter();
   const apollo = useApolloClient();
-  const { user, logout } = useUserAuth();
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -106,7 +103,7 @@ function Dashboard() {
       // Pass the raw UUID so the in-meeting InsightsPanel knows
       // which meeting to generate insights for.
       qs.set("meetingId", raw);
-      router.push(`/${parsed.room}?${qs.toString()}`);
+      openMeetingInNewTab(`/${parsed.room}?${qs.toString()}`, router);
     } catch (e) {
       setJoinError(e instanceof Error ? e.message : "Failed to start the meeting.");
     } finally {
@@ -190,18 +187,12 @@ function Dashboard() {
         borderColor={aiqlickTokens.gray200}
       >
         <XStack alignItems="center" gap={12}>
-          <View
-            width={28}
-            height={28}
-            borderRadius={8}
-            alignItems="center"
-            justifyContent="center"
-            backgroundColor={aiqlickTokens.primary}
-          >
-            <Text color="#fff" fontSize={14} fontWeight="700">
-              a
-            </Text>
-          </View>
+          <Image
+            source={require("@/assets/icon.png")}
+            style={{ width: 28, height: 28, borderRadius: 8 }}
+            accessibilityLabel="aiqlick"
+            resizeMode="contain"
+          />
           <XStack alignItems="center" gap={10}>
             <CalendarIcon size={14} color={aiqlickTokens.primary} />
             <Text
@@ -215,31 +206,7 @@ function Dashboard() {
           </XStack>
         </XStack>
 
-        <XStack alignItems="center" gap={12}>
-          <YStack alignItems="flex-end">
-            <Text color={aiqlickTokens.gray900} fontSize={13} fontWeight="600">
-              {user ? `${user.firstName} ${user.lastName}` : "—"}
-            </Text>
-            <Text color={aiqlickTokens.gray500} fontSize={10}>
-              {user?.selectedCompanyId ? "Company" : "Candidate"}
-            </Text>
-          </YStack>
-          <TWAvatar
-            name={user ? `${user.firstName} ${user.lastName}` : "?"}
-            src={user?.profileImageUrl ?? undefined}
-            size="sm"
-          />
-          <TWButton
-            variant="ghost"
-            color="default"
-            size="sm"
-            isIconOnly
-            icon={<LogOut size={14} color={aiqlickTokens.gray700} />}
-            onPress={() => {
-              void logout();
-            }}
-          />
-        </XStack>
+        <ProfileSwitcher />
       </XStack>
 
       <ScrollView
@@ -567,6 +534,23 @@ function ListView({
 function stripPrefix(id: string | null | undefined): string | null {
   if (!id) return null;
   return id.replace(/^(meeting|interview|booking)-/i, "");
+}
+
+/**
+ * Open the wrapper-internal meeting URL. On web we use `window.open`
+ * with `_blank` so the meeting room lives in its own tab — leaves the
+ * dashboard / calendar list intact for the user to come back to.
+ * On native there's no concept of tabs, so we navigate in-app.
+ */
+function openMeetingInNewTab(
+  target: string,
+  router: { push: (href: string) => void },
+) {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    window.open(target, "_blank", "noopener,noreferrer");
+  } else {
+    router.push(target);
+  }
 }
 
 function parseMeetingUrl(url: string | null) {

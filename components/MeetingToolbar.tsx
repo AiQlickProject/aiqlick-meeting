@@ -10,6 +10,9 @@ import {
   Hand,
   UserPlus,
   Sparkles,
+  Captions,
+  CaptionsOff,
+  FileText,
   PhoneOff,
 } from "@tamagui/lucide-icons";
 import { Pressable } from "react-native";
@@ -27,6 +30,9 @@ interface Props {
   onToggleChat: () => void;
   onToggleParticipants: () => void;
   onToggleRaiseHand: () => void;
+  onToggleSubtitles: () => void;
+  onToggleTranscript: () => void;
+  transcriptOpen?: boolean;
   onToggleInsights?: () => void;
   insightsOpen?: boolean;
   onInvite: () => void;
@@ -48,6 +54,9 @@ export default function MeetingToolbar({
   onToggleChat,
   onToggleParticipants,
   onToggleRaiseHand,
+  onToggleSubtitles,
+  onToggleTranscript,
+  transcriptOpen,
   onToggleInsights,
   insightsOpen,
   onInvite,
@@ -133,6 +142,26 @@ export default function MeetingToolbar({
           onPress={onToggleRaiseHand}
         >
           <Hand size={20} color={state.isHandRaised ? "#7091E6" : "#e5e7eb"} />
+        </ToolbarButton>
+
+        <ToolbarButton
+          tooltip={state.areCaptionsVisible ? "Hide captions" : "Show captions"}
+          highlighted={state.areCaptionsVisible}
+          onPress={onToggleSubtitles}
+        >
+          {state.areCaptionsVisible ? (
+            <Captions size={20} color="#7091E6" />
+          ) : (
+            <CaptionsOff size={20} color="#e5e7eb" />
+          )}
+        </ToolbarButton>
+
+        <ToolbarButton
+          tooltip="Live transcript"
+          highlighted={transcriptOpen}
+          onPress={onToggleTranscript}
+        >
+          <FileText size={20} color={transcriptOpen ? "#7091E6" : "#e5e7eb"} />
         </ToolbarButton>
 
         <ToolbarButton tooltip="Copy invite link" onPress={onInvite}>

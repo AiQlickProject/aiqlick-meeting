@@ -23,10 +23,13 @@ interface Props extends Omit<TextInputProps, "style"> {
   onClear?: () => void;
 }
 
-const SIZE_SPEC: Record<TWInputSize, { height: number; font: number; labelTop: number }> = {
-  sm: { height: 36, font: 13, labelTop: 4 },
-  md: { height: 44, font: 14, labelTop: 6 },
-  lg: { height: 52, font: 15, labelTop: 8 },
+// Box heights are the *final* field height (no +14 inflation). These
+// are standard, comfortable form heights — the previous values left a
+// large hollow gap between the floated label and the value.
+const SIZE_SPEC: Record<TWInputSize, { height: number; font: number }> = {
+  sm: { height: 42, font: 14 },
+  md: { height: 52, font: 14 },
+  lg: { height: 58, font: 15 },
 };
 
 /**
@@ -68,36 +71,36 @@ export function TWInput({
     ? aiqlickTokens.danger
     : focused
       ? aiqlickTokens.primary
-      : aiqlickTokens.primaryTint;
+      : aiqlickTokens.gray200;
 
   return (
     <YStack gap={4}>
       {variant === "bordered" ? (
         <YStack
-          height={s.height + 14}
-          paddingHorizontal={12}
+          height={s.height}
+          paddingHorizontal={14}
           borderRadius={aiqlickTokens.radiusLg}
-          borderWidth={2}
+          borderWidth={1.5}
           borderColor={borderColor}
           backgroundColor={aiqlickTokens.surface}
-          justifyContent="flex-end"
+          justifyContent="center"
           position="relative"
         >
           {label && (
             <Text
               position="absolute"
-              left={startIcon && !floated ? 36 : 12}
-              top={floated ? s.labelTop : (s.height + 14) / 2 - 8}
+              left={startIcon && !floated ? 38 : 14}
+              top={floated ? 7 : s.height / 2 - 9}
               fontSize={floated ? 11 : s.font}
               color={focused ? aiqlickTokens.primary : aiqlickTokens.gray500}
-              fontWeight={floated ? "600" : "500"}
+              fontWeight={floated ? "600" : "400"}
               pointerEvents="none"
             >
               {label}
               {isRequired ? " *" : ""}
             </Text>
           )}
-          <XStack alignItems="center" gap={8} paddingBottom={6}>
+          <XStack alignItems="center" gap={8}>
             {startIcon}
             <TextInput
               {...rest}
@@ -116,7 +119,7 @@ export function TWInput({
               secureTextEntry={secureTextEntry && !revealed}
               style={{
                 flex: 1,
-                paddingTop: label ? 14 : 0,
+                paddingTop: label ? 16 : 0,
                 fontSize: s.font,
                 color: aiqlickTokens.textDark,
                 outlineStyle: "none" as unknown as undefined,
@@ -215,15 +218,15 @@ export function TWTextarea({
     ? aiqlickTokens.danger
     : focused
       ? aiqlickTokens.primary
-      : aiqlickTokens.primaryTint;
+      : aiqlickTokens.gray200;
   return (
     <YStack gap={4}>
       <YStack
-        paddingHorizontal={12}
-        paddingTop={18}
+        paddingHorizontal={14}
+        paddingTop={20}
         paddingBottom={8}
         borderRadius={aiqlickTokens.radiusLg}
-        borderWidth={2}
+        borderWidth={1.5}
         borderColor={borderColor}
         backgroundColor={aiqlickTokens.surface}
         position="relative"
@@ -231,11 +234,11 @@ export function TWTextarea({
         {label && (
           <Text
             position="absolute"
-            left={12}
-            top={floated ? 6 : 16}
+            left={14}
+            top={floated ? 7 : 18}
             fontSize={floated ? 11 : 14}
             color={focused ? aiqlickTokens.primary : aiqlickTokens.gray500}
-            fontWeight={floated ? "600" : "500"}
+            fontWeight={floated ? "600" : "400"}
             pointerEvents="none"
           >
             {label}

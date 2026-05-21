@@ -36,25 +36,25 @@ export function TWDatepicker({
     ? aiqlickTokens.danger
     : focused
       ? aiqlickTokens.primary
-      : aiqlickTokens.primaryTint;
+      : aiqlickTokens.gray200;
 
   return (
     <YStack gap={4}>
       <YStack
-        height={58}
-        paddingHorizontal={12}
+        height={52}
+        paddingHorizontal={14}
         borderRadius={aiqlickTokens.radiusLg}
-        borderWidth={2}
+        borderWidth={1.5}
         borderColor={borderColor}
         backgroundColor={aiqlickTokens.surface}
-        justifyContent="flex-end"
+        justifyContent="center"
         position="relative"
       >
         {label && (
           <Text
             position="absolute"
-            left={12}
-            top={6}
+            left={14}
+            top={7}
             fontSize={11}
             color={focused ? aiqlickTokens.primary : aiqlickTokens.gray500}
             fontWeight="600"
@@ -64,7 +64,7 @@ export function TWDatepicker({
             {isRequired ? " *" : ""}
           </Text>
         )}
-        <XStack alignItems="center" gap={8} paddingBottom={8}>
+        <XStack alignItems="center" gap={8} paddingTop={16}>
           {Platform.OS === "web" ? (
             // react-native-web maps <input type="date"> through this
             // unsupported-but-accepted type prop on TextInput. The
@@ -82,7 +82,7 @@ export function TWDatepicker({
               onBlur={() => setFocused(false)}
               style={{
                 flex: 1,
-                paddingTop: 14,
+                paddingTop: 0,
                 fontSize: 14,
                 color: aiqlickTokens.textDark,
                 outlineStyle: "none" as unknown as undefined,
@@ -101,7 +101,7 @@ export function TWDatepicker({
               autoCapitalize="none"
               style={{
                 flex: 1,
-                paddingTop: 14,
+                paddingTop: 0,
                 fontSize: 14,
                 color: aiqlickTokens.textDark,
               }}
