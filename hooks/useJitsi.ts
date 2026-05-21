@@ -57,7 +57,7 @@ export function useJitsi({ roomName, jwt, displayName }: UseJitsiArgs) {
     }
     return (
       (Constants.expoConfig?.extra as { jitsiDomain?: string } | undefined)
-        ?.jitsiDomain ?? "book.aiqlick.com"
+        ?.jitsiDomain ?? "meet.aiqlick.com"
     );
   })();
 

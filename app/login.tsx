@@ -2,6 +2,7 @@ import { useMutation } from "@apollo/client";
 import { LogIn } from "@tamagui/lucide-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { Image } from "react-native";
 import { View, YStack, Text } from "tamagui";
 
 import GradientBackground from "@/components/ui/GradientBackground";
@@ -69,18 +70,12 @@ export default function LoginScreen() {
         >
           <YStack gap={20}>
             <YStack gap={6} alignItems="center">
-              <View
-                width={48}
-                height={48}
-                borderRadius={12}
-                backgroundColor={aiqlickTokens.primary}
-                alignItems="center"
-                justifyContent="center"
-              >
-                <Text color="#fff" fontSize={22} fontWeight="700">
-                  a
-                </Text>
-              </View>
+              <Image
+                source={require("@/assets/icon.png")}
+                style={{ width: 48, height: 48, borderRadius: 12 }}
+                accessibilityLabel="aiqlick"
+                resizeMode="contain"
+              />
               <Text color={aiqlickTokens.textDark} fontSize={22} fontWeight="700">
                 Welcome back
               </Text>

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { X } from "@tamagui/lucide-icons";
-import { Modal, Pressable } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable } from "react-native";
 import { ScrollView, Text, View, XStack, YStack } from "tamagui";
 
 import { aiqlickTokens } from "@/tamagui.config";
@@ -61,11 +61,14 @@ export function TWModal({
           padding: 16,
         }}
       >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ width: "100%", maxWidth: w, maxHeight: "100%" }}
+        >
         <Pressable
           onPress={(e) => e.stopPropagation()}
           style={{
             width: "100%",
-            maxWidth: w,
             maxHeight: "100%",
           }}
         >
@@ -118,7 +121,7 @@ export function TWModal({
               </XStack>
             )}
 
-            <ScrollView>
+            <ScrollView keyboardShouldPersistTaps="handled">
               <YStack padding={20} gap={16}>
                 {children}
               </YStack>
@@ -140,6 +143,7 @@ export function TWModal({
             )}
           </YStack>
         </Pressable>
+        </KeyboardAvoidingView>
       </Pressable>
     </Modal>
   );

@@ -14,10 +14,11 @@ import {
 } from "@tamagui/lucide-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator } from "react-native";
+import { ActivityIndicator, Platform } from "react-native";
 import { ScrollView, View, XStack, YStack, Text } from "tamagui";
 
 import AuthGuard from "@/components/AuthGuard";
+import { useUserAuth } from "@/contexts/UserAuthProvider";
 import { TWAvatar } from "@/components/ux/TWAvatar";
 import { TWButton } from "@/components/ux/TWButton";
 import {
@@ -65,6 +66,7 @@ function Inner() {
   // strip the type prefix defensively here too — that way an old
   // bookmark / shared link that still carries the prefix resolves.
   const meetingId = rawId?.replace(/^(meeting|interview|booking)-/i, "") ?? null;
+  const { user } = useUserAuth();
 
   const { data, loading, error } = useQuery<MeetingDetailResult>(
     GET_MEETING_BY_ID,
@@ -133,23 +135,34 @@ function Inner() {
             <NotFound onBack={() => router.replace("/")} />
           )}
 
-          {meeting && (
-            <>
-              <HeaderCard meeting={meeting} />
-              <ActionsCard meeting={meeting} />
-              <XStack gap={16} flexWrap="wrap">
-                <View flex={1} minWidth={320}>
-                  <ScheduleCard meeting={meeting} />
-                </View>
-                <View flex={1} minWidth={320}>
-                  <AccessCard meeting={meeting} />
-                </View>
-              </XStack>
-              <AttendeesCard meeting={meeting} />
-              <InsightsSection />
-              <TranscriptionSection />
-            </>
-          )}
+          {meeting && (() => {
+            // Edit / Complete / Cancel and the attendee-add button are
+            // restricted to the organizer. The backend already enforces
+            // this on every mutation; we hide the UI affordances so
+            // non-organizers don't see (and tap) buttons that would
+            // immediately error out.
+            const isOrganizer =
+              !!user?.id &&
+              !!meeting.organizer?.id &&
+              user.id === meeting.organizer.id;
+            return (
+              <>
+                <HeaderCard meeting={meeting} />
+                {isOrganizer && <ActionsCard meeting={meeting} />}
+                <XStack gap={16} flexWrap="wrap">
+                  <View flex={1} minWidth={320}>
+                    <ScheduleCard meeting={meeting} />
+                  </View>
+                  <View flex={1} minWidth={320}>
+                    <AccessCard meeting={meeting} />
+                  </View>
+                </XStack>
+                <AttendeesCard meeting={meeting} isOrganizer={isOrganizer} />
+                <InsightsSection />
+                <TranscriptionSection />
+              </>
+            );
+          })()}
         </YStack>
       </ScrollView>
     </YStack>
@@ -293,7 +306,12 @@ function AccessCard({ meeting }: { meeting: MeetingDetail }) {
       if (parsed.domain) qs.set("domain", parsed.domain);
       if (meeting.title) qs.set("subject", meeting.title);
       qs.set("meetingId", meeting.id);
-      router.push(`/${parsed.room}?${qs.toString()}`);
+      const target = `/${parsed.room}?${qs.toString()}`;
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        window.open(target, "_blank", "noopener,noreferrer");
+      } else {
+        router.push(target);
+      }
     } catch (e) {
       setJoinError(e instanceof Error ? e.message : "Failed to start meeting.");
     } finally {
@@ -368,20 +386,28 @@ function AccessCard({ meeting }: { meeting: MeetingDetail }) {
   );
 }
 
-function AttendeesCard({ meeting }: { meeting: MeetingDetail }) {
+function AttendeesCard({
+  meeting,
+  isOrganizer,
+}: {
+  meeting: MeetingDetail;
+  isOrganizer: boolean;
+}) {
   return (
     <TWCard shadow="sm">
       <TWCardHeader>
         <Text color={aiqlickTokens.gray900} fontSize={14} fontWeight="700">
           Attendees ({meeting.attendees.length})
         </Text>
-        <TWButton
-          label="Add Attendee"
-          variant="flat"
-          color="primary"
-          size="sm"
-          disabled
-        />
+        {isOrganizer && (
+          <TWButton
+            label="Add Attendee"
+            variant="flat"
+            color="primary"
+            size="sm"
+            disabled
+          />
+        )}
       </TWCardHeader>
       <TWDivider />
       <TWCardBody>

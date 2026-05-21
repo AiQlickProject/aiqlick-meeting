@@ -76,7 +76,7 @@
       "typedRoutes": false
     },
     "extra": {
-      "jitsiDomain": "book.aiqlick.com",
+      "jitsiDomain": "meet.aiqlick.com",
       "apiUrl": "https://api.aiqlick.com"
     }
   }
