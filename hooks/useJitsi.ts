@@ -18,11 +18,13 @@ const INITIAL: JitsiState = {
   isScreenSharing: false,
   isTileView: true,
   isTranscribing: false,
+  areCaptionsVisible: false,
   isChatOpen: false,
   isParticipantsOpen: false,
   isHandRaised: false,
   participantCount: 1,
   participants: [],
+  transcripts: [],
   unreadChatCount: 0,
   error: null,
 };
@@ -133,6 +135,7 @@ export function useJitsi({ roomName, jwt, displayName }: UseJitsiArgs) {
     toggleParticipants: () =>
       setState((s) => ({ ...s, isParticipantsOpen: !s.isParticipantsOpen })),
     toggleRaiseHand: () => handleRef.current?.execute("toggleRaiseHand"),
+    toggleSubtitles: () => handleRef.current?.execute("toggleSubtitles"),
     hangup: () => handleRef.current?.execute("hangup"),
   };
 

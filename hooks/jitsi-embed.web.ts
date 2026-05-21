@@ -5,7 +5,10 @@ import type {
   JitsiCommandName,
   JitsiEmbedHandle,
   ParticipantInfo,
+  TranscriptChunk,
 } from "./jitsi-types";
+
+const TRANSCRIPT_MAX_CHUNKS = 1000;
 
 export interface CreateJitsiEmbedWebArgs extends CreateJitsiEmbedArgs {
   container: HTMLElement;
@@ -86,10 +89,32 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
   let disposed = false;
   let isJoined = false;
   let isTranscribing = false;
+  let areCaptionsVisible = false;
   const transcriptionTimers: Array<ReturnType<typeof setTimeout>> = [];
   const parent = args.container;
   const clearTranscriptionTimers = () => {
     transcriptionTimers.splice(0).forEach(clearTimeout);
+  };
+
+  // Ordered chunks keyed by Jitsi's messageID so partial updates
+  // (stable/unstable) replace earlier versions in place instead of
+  // appending duplicates. A Map preserves insertion order.
+  const transcriptChunks = new Map<string, TranscriptChunk>();
+  const emitTranscripts = () => {
+    args.onStateChange({ transcripts: Array.from(transcriptChunks.values()) });
+  };
+
+  // Lifted out of the `.then()` closure so `execute(toggleSubtitles)` can
+  // reach it. `api` is a closure-captured `let` and is null until the
+  // iframe finishes loading — calls before then no-op safely via `?.`.
+  const setCaptions = (visible: boolean) => {
+    // setSubtitles(enabled, displaySubtitles, language) — Jigasi only
+    // streams transcripts while `enabled` is true; `displaySubtitles`
+    // controls whether Jitsi renders the caption overlay on top of the
+    // video. We always pass both flags together so they stay in sync.
+    api?.executeCommand("setSubtitles", visible, visible, "en-US");
+    areCaptionsVisible = visible;
+    args.onStateChange({ areCaptionsVisible: visible });
   };
 
   const init = () => {
@@ -152,7 +177,7 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
         const ensureTranscriptionStarted = () => {
           if (disposed || !isJoined || isTranscribing) return;
           try {
-            api?.executeCommand("setSubtitles", true);
+            setCaptions(true);
           } catch (err) {
             console.warn("[Jitsi] auto transcription request failed:", err);
           }
@@ -183,8 +208,53 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
         api.addListener("videoConferenceLeft", () => {
           isJoined = false;
           isTranscribing = false;
+          areCaptionsVisible = false;
           clearTranscriptionTimers();
-          args.onStateChange({ isJoined: false, isTranscribing: false });
+          transcriptChunks.clear();
+          args.onStateChange({
+            isJoined: false,
+            isTranscribing: false,
+            areCaptionsVisible: false,
+            transcripts: [],
+          });
+        });
+
+        api.addListener("transcriptionChunkReceived", (...a: unknown[]) => {
+          const ev = a[0] as
+            | {
+                data?: {
+                  messageID?: string;
+                  participant?: { id?: string; name?: string };
+                  final?: string;
+                  stable?: string;
+                  unstable?: string;
+                };
+              }
+            | undefined;
+          const data = ev?.data;
+          if (!data?.messageID) return;
+          const text = (
+            data.final ??
+            `${data.stable ?? ""}${data.unstable ?? ""}`
+          ).trim();
+          if (!text) return;
+          transcriptChunks.set(data.messageID, {
+            id: data.messageID,
+            participantId: data.participant?.id ?? "",
+            participantName: (data.participant?.name || "Guest").trim(),
+            text,
+            isFinal: typeof data.final === "string",
+            timestamp: Date.now(),
+          });
+          // Bound memory in long meetings — drop oldest finalized chunks
+          // first. The Map preserves insertion order so .keys().next()
+          // gives us the oldest.
+          while (transcriptChunks.size > TRANSCRIPT_MAX_CHUNKS) {
+            const oldest = transcriptChunks.keys().next().value;
+            if (oldest === undefined) break;
+            transcriptChunks.delete(oldest);
+          }
+          emitTranscripts();
         });
         api.addListener("transcribingStatusChanged", (...a: unknown[]) => {
           const ev = a[0] as { on?: boolean } | undefined;
@@ -276,6 +346,14 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
 
   return {
     execute(command: JitsiCommandName) {
+      if (command === "toggleSubtitles") {
+        try {
+          setCaptions(!areCaptionsVisible);
+        } catch (err) {
+          console.warn("[Jitsi] toggleSubtitles failed:", err);
+        }
+        return;
+      }
       const mapped = commandMap[command];
       if (mapped) api?.executeCommand(mapped);
     },

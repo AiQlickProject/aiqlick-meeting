@@ -12,6 +12,15 @@ export interface ParticipantInfo {
   isLocal: boolean;
 }
 
+export interface TranscriptChunk {
+  id: string;
+  participantId: string;
+  participantName: string;
+  text: string;
+  isFinal: boolean;
+  timestamp: number;
+}
+
 export interface JitsiState {
   isJoined: boolean;
   isAudioMuted: boolean;
@@ -19,11 +28,13 @@ export interface JitsiState {
   isScreenSharing: boolean;
   isTileView: boolean;
   isTranscribing: boolean;
+  areCaptionsVisible: boolean;
   isChatOpen: boolean;
   isParticipantsOpen: boolean;
   isHandRaised: boolean;
   participantCount: number;
   participants: ParticipantInfo[];
+  transcripts: TranscriptChunk[];
   unreadChatCount: number;
   error: string | null;
 }
@@ -36,6 +47,7 @@ export interface JitsiCommands {
   toggleChat: () => void;
   toggleParticipants: () => void;
   toggleRaiseHand: () => void;
+  toggleSubtitles: () => void;
   hangup: () => void;
 }
 
@@ -47,6 +59,7 @@ export type JitsiCommandName =
   | "toggleChat"
   | "toggleParticipants"
   | "toggleRaiseHand"
+  | "toggleSubtitles"
   | "hangup";
 
 export interface JitsiEmbedHandle {
