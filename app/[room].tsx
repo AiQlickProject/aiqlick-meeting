@@ -2,8 +2,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { XStack, YStack } from "tamagui";
 
+import ChatPanel from "@/components/ChatPanel";
 import InsightsPanel from "@/components/InsightsPanel";
 import ParticipantsPanel from "@/components/ParticipantsPanel";
+import ReactionsOverlay from "@/components/ReactionsOverlay";
 import TranscriptPanel from "@/components/TranscriptPanel";
 
 import MeetingHeader from "@/components/MeetingHeader";
@@ -107,28 +109,57 @@ export default function MeetingRoute() {
     }
   })();
 
+  // Only one side panel is visible at a time. Opening any one closes
+  // the others so the video stage never collapses below usable size.
+  // Chat joins the same rota as participants / insights / transcript.
+  const handleToggleChat = useCallback(() => {
+    const willOpen = !state.isChatOpen;
+    if (willOpen) {
+      if (state.isParticipantsOpen) commands.toggleParticipants();
+      setIsInsightsOpen(false);
+      setIsTranscriptOpen(false);
+    }
+    commands.toggleChat();
+  }, [commands, state.isChatOpen, state.isParticipantsOpen]);
+
   const handleToggleParticipants = useCallback(() => {
-    if (isInsightsOpen) setIsInsightsOpen(false);
-    if (isTranscriptOpen) setIsTranscriptOpen(false);
+    const willOpen = !state.isParticipantsOpen;
+    if (willOpen) {
+      if (state.isChatOpen) commands.toggleChat();
+      setIsInsightsOpen(false);
+      setIsTranscriptOpen(false);
+    }
     commands.toggleParticipants();
-  }, [commands, isInsightsOpen, isTranscriptOpen]);
+  }, [commands, state.isChatOpen, state.isParticipantsOpen]);
 
   const handleToggleTranscript = useCallback(() => {
-    if (state.isParticipantsOpen) commands.toggleParticipants();
-    if (isInsightsOpen) setIsInsightsOpen(false);
+    const willOpen = !isTranscriptOpen;
+    if (willOpen) {
+      if (state.isChatOpen) commands.toggleChat();
+      if (state.isParticipantsOpen) commands.toggleParticipants();
+      setIsInsightsOpen(false);
+    }
     setIsTranscriptOpen((v) => !v);
-  }, [commands, isInsightsOpen, state.isParticipantsOpen]);
+  }, [commands, isTranscriptOpen, state.isChatOpen, state.isParticipantsOpen]);
 
   const handleToggleInsights = useCallback(() => {
-    if (state.isParticipantsOpen) commands.toggleParticipants();
-    if (isTranscriptOpen) setIsTranscriptOpen(false);
+    const willOpen = !isInsightsOpen;
+    if (willOpen) {
+      if (state.isChatOpen) commands.toggleChat();
+      if (state.isParticipantsOpen) commands.toggleParticipants();
+      setIsTranscriptOpen(false);
+    }
     setIsInsightsOpen((v) => !v);
-  }, [commands, isTranscriptOpen, state.isParticipantsOpen]);
+  }, [commands, isInsightsOpen, state.isChatOpen, state.isParticipantsOpen]);
 
-  // Only one side panel is visible at a time. Toggling one closes the
-  // others so the video stage doesn't get squeezed below a usable size.
-  const sidePanel: "participants" | "insights" | "transcript" | null =
-    state.isParticipantsOpen
+  const sidePanel:
+    | "chat"
+    | "participants"
+    | "insights"
+    | "transcript"
+    | null = state.isChatOpen
+    ? "chat"
+    : state.isParticipantsOpen
       ? "participants"
       : isInsightsOpen
         ? "insights"
@@ -154,6 +185,12 @@ export default function MeetingRoute() {
             nativeMeetingProps={nativeMeetingProps}
           />
 
+          {/* Floating reaction toasts — sit above the iframe but
+              below the toolbar's tooltips. Driven entirely by
+              state.recentReactions which is fed from sendReaction +
+              endpointTextMessageReceived. */}
+          <ReactionsOverlay reactions={state.recentReactions} />
+
           <YStack
             position="absolute"
             left={0}
@@ -168,7 +205,7 @@ export default function MeetingRoute() {
               onToggleVideo={commands.toggleVideo}
               onToggleScreenShare={commands.toggleScreenShare}
               onSetLayout={commands.setLayout}
-              onToggleChat={commands.toggleChat}
+              onToggleChat={handleToggleChat}
               onToggleParticipants={handleToggleParticipants}
               onToggleRaiseHand={commands.toggleRaiseHand}
               onSendReaction={commands.sendReaction}
@@ -186,6 +223,15 @@ export default function MeetingRoute() {
           </YStack>
         </YStack>
 
+        {sidePanel === "chat" && (
+          <YStack width={340} backgroundColor="$background">
+            <ChatPanel
+              state={state}
+              onClose={handleToggleChat}
+              onSend={commands.sendChatMessage}
+            />
+          </YStack>
+        )}
         {sidePanel === "participants" && (
           <YStack width={340} backgroundColor="$background">
             <ParticipantsPanel

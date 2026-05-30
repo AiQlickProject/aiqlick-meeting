@@ -33,6 +33,8 @@ const INITIAL: JitsiState = {
   participantCount: 1,
   participants: [],
   transcripts: [],
+  chatMessages: [],
+  recentReactions: [],
   unreadChatCount: 0,
   availableDevices: EMPTY_DEVICES,
   selectedDevices: EMPTY_SELECTED_DEVICES,
@@ -128,7 +130,20 @@ export function useJitsi({ roomName, jwt, displayName }: UseJitsiArgs) {
     toggleTileView: () => handleRef.current?.execute("toggleTileView"),
     setLayout: (mode: LayoutMode) =>
       handleRef.current?.execute(mode === "tile" ? "setLayoutTile" : "setLayoutSpeaker"),
-    toggleChat: () => handleRef.current?.execute("toggleChat"),
+    // toggleChat is now PURELY local — we render our own ChatPanel and
+    // never open Jitsi's native chat. The opening side-effect also
+    // clears the unread counter via markChatRead, mirroring how
+    // Teams / Meet behave when you open the chat pane.
+    toggleChat: () =>
+      setState((s) => {
+        const next = !s.isChatOpen;
+        if (next) handleRef.current?.execute("markChatRead");
+        return {
+          ...s,
+          isChatOpen: next,
+          unreadChatCount: next ? 0 : s.unreadChatCount,
+        };
+      }),
     toggleParticipants: () =>
       setState((s) => ({ ...s, isParticipantsOpen: !s.isParticipantsOpen })),
     toggleRaiseHand: () => handleRef.current?.execute("toggleRaiseHand"),
@@ -137,6 +152,9 @@ export function useJitsi({ roomName, jwt, displayName }: UseJitsiArgs) {
       handleRef.current?.execute(visible ? "setSubtitlesOn" : "setSubtitlesOff"),
     sendReaction: (kind: ReactionKind) =>
       handleRef.current?.execute("sendReaction", kind),
+    sendChatMessage: (text: string) =>
+      handleRef.current?.execute("sendChatMessage", text),
+    markChatRead: () => handleRef.current?.execute("markChatRead"),
     toggleBlur: () => handleRef.current?.execute("toggleBlur"),
     toggleNoiseSuppression: () => handleRef.current?.execute("toggleNoiseSuppression"),
     setAudioInputDevice: (d: MediaDevice) =>
