@@ -11,6 +11,13 @@ interface CreateNativeJitsiEmbedArgs extends CreateJitsiEmbedArgs {
   getState: () => JitsiState;
 }
 
+/**
+ * Native (iOS / Android) embed. The @jitsi/react-native-sdk component
+ * owns most of the in-meeting UI on mobile, so we only forward the
+ * commands we can — mute/unmute audio + video and hang up. Everything
+ * else no-ops cleanly; the toolbar still renders, the buttons just
+ * don't drive Jitsi until we wire the native bridge.
+ */
 export function createJitsiEmbed(args: CreateNativeJitsiEmbedArgs): JitsiEmbedHandle {
   return {
     execute(command: JitsiCommandName) {

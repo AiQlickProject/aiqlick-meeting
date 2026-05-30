@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Platform, Pressable } from "react-native";
 import type { ScrollView as RNScrollView } from "react-native";
 import { Download, X } from "@tamagui/lucide-icons";
-import { ScrollView, Text, XStack, YStack } from "tamagui";
+import { ScrollView, Switch, Text, XStack, YStack } from "tamagui";
 
 import type { JitsiState, TranscriptChunk } from "@/hooks/jitsi-types";
 import { aiqlickTokens } from "@/tamagui.config";
@@ -16,6 +16,12 @@ interface Props {
    * when no meeting subject is available.
    */
   filenameBase?: string;
+  /**
+   * Toggle the on-video caption overlay. Captions and transcript share
+   * the same Jigasi stream — keeping the toggle in this panel kills the
+   * old duplicate "captions" toolbar button.
+   */
+  onSetCaptions: (visible: boolean) => void;
 }
 
 /**
@@ -25,7 +31,12 @@ interface Props {
  * download button serializes the current list to a plain-text file with
  * timestamps + speaker labels.
  */
-export default function TranscriptPanel({ state, onClose, filenameBase }: Props) {
+export default function TranscriptPanel({
+  state,
+  onClose,
+  filenameBase,
+  onSetCaptions,
+}: Props) {
   const chunks = state.transcripts;
 
   const scrollRef = useRef<RNScrollView | null>(null);
@@ -127,6 +138,32 @@ export default function TranscriptPanel({ state, onClose, filenameBase }: Props)
             <X size={18} color="#e5e7eb" />
           </Pressable>
         </XStack>
+      </XStack>
+
+      <XStack
+        alignItems="center"
+        justifyContent="space-between"
+        paddingHorizontal={16}
+        paddingVertical={10}
+        borderBottomWidth={1}
+        borderColor="rgba(255,255,255,0.04)"
+        backgroundColor="rgba(255,255,255,0.02)"
+      >
+        <YStack flex={1} gap={1}>
+          <Text color="#fff" fontSize={12} fontWeight="600">
+            Show captions on video
+          </Text>
+          <Text color="rgba(255,255,255,0.55)" fontSize={11}>
+            Overlay live captions on the speaker
+          </Text>
+        </YStack>
+        <Switch
+          size="$2"
+          checked={state.areCaptionsVisible}
+          onCheckedChange={(v) => onSetCaptions(v)}
+        >
+          <Switch.Thumb animation="quick" />
+        </Switch>
       </XStack>
 
       <ScrollView ref={scrollRef} flex={1} contentContainerStyle={{ padding: 16 }}>

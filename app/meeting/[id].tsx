@@ -48,7 +48,10 @@ import { aiqlickTokens } from "@/tamagui.config";
  * For now we only call `GET_MEETING_BY_ID` — interviews funnel
  * through the same backend resolver. If the user opens a booking-
  * only record this query returns null and we show a friendly fallback.
+ *
+ * SSR disabled — Tamagui components use browser-only APIs.
  */
+export const ssr = false;
 export default function MeetingDetailPage() {
   return (
     <AuthGuard>

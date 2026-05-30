@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { Brain, Sparkles, X, RefreshCw, AlertCircle } from "@tamagui/lucide-icons";
 import { ActivityIndicator, Pressable } from "react-native";
@@ -48,10 +49,16 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
   // Start/stop polling based on whether an active generation is in
   // flight. Matches the heuristic in aiqlick-frontend's
   // `useMeetingInsights` without the streaming-subscription complexity.
-  if (typeof window !== "undefined") {
-    if (isGenerating) startPolling(4000);
-    else stopPolling();
-  }
+  useEffect(() => {
+    if (isGenerating) {
+      startPolling(4000);
+    } else {
+      stopPolling();
+    }
+    return () => {
+      stopPolling();
+    };
+  }, [isGenerating, startPolling, stopPolling]);
 
   const [initialize, { loading: initializing }] = useMutation<InitializeMeetingInsightResult>(
     INITIALIZE_MEETING_INSIGHT,

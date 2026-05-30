@@ -21,6 +21,35 @@ export interface TranscriptChunk {
   timestamp: number;
 }
 
+export interface MediaDevice {
+  deviceId: string;
+  label: string;
+  kind: "audioinput" | "audiooutput" | "videoinput";
+  groupId?: string;
+}
+
+export interface AvailableDevices {
+  audioInput: MediaDevice[];
+  audioOutput: MediaDevice[];
+  videoInput: MediaDevice[];
+}
+
+export interface SelectedDevices {
+  audioInput: string | null;
+  audioOutput: string | null;
+  videoInput: string | null;
+}
+
+export type LayoutMode = "tile" | "speaker";
+export type NetworkQuality = "good" | "fair" | "poor" | "unknown";
+export type ReactionKind =
+  | "thumbs-up"
+  | "clap"
+  | "laugh"
+  | "surprised"
+  | "boo"
+  | "love";
+
 export interface JitsiState {
   isJoined: boolean;
   isAudioMuted: boolean;
@@ -32,10 +61,16 @@ export interface JitsiState {
   isChatOpen: boolean;
   isParticipantsOpen: boolean;
   isHandRaised: boolean;
+  isBlurEnabled: boolean;
+  isNoiseSuppressionOn: boolean;
+  isRecording: boolean;
+  networkQuality: NetworkQuality;
   participantCount: number;
   participants: ParticipantInfo[];
   transcripts: TranscriptChunk[];
   unreadChatCount: number;
+  availableDevices: AvailableDevices;
+  selectedDevices: SelectedDevices;
   error: string | null;
 }
 
@@ -44,10 +79,19 @@ export interface JitsiCommands {
   toggleVideo: () => void;
   toggleScreenShare: () => void;
   toggleTileView: () => void;
+  setLayout: (mode: LayoutMode) => void;
   toggleChat: () => void;
   toggleParticipants: () => void;
   toggleRaiseHand: () => void;
   toggleSubtitles: () => void;
+  setSubtitles: (visible: boolean) => void;
+  sendReaction: (kind: ReactionKind) => void;
+  toggleBlur: () => void;
+  toggleNoiseSuppression: () => void;
+  setAudioInputDevice: (device: MediaDevice) => void;
+  setVideoInputDevice: (device: MediaDevice) => void;
+  setAudioOutputDevice: (device: MediaDevice) => void;
+  refreshDevices: () => void;
   hangup: () => void;
 }
 
@@ -56,14 +100,25 @@ export type JitsiCommandName =
   | "toggleVideo"
   | "toggleScreenShare"
   | "toggleTileView"
+  | "setLayoutTile"
+  | "setLayoutSpeaker"
   | "toggleChat"
   | "toggleParticipants"
   | "toggleRaiseHand"
   | "toggleSubtitles"
+  | "setSubtitlesOn"
+  | "setSubtitlesOff"
+  | "sendReaction"
+  | "toggleBlur"
+  | "toggleNoiseSuppression"
+  | "setAudioInputDevice"
+  | "setVideoInputDevice"
+  | "setAudioOutputDevice"
+  | "refreshDevices"
   | "hangup";
 
 export interface JitsiEmbedHandle {
-  execute: (command: JitsiCommandName) => void;
+  execute: (command: JitsiCommandName, ...args: unknown[]) => void;
   dispose: () => void;
 }
 
@@ -92,3 +147,15 @@ export interface JitsiEmbedProps {
   attachContainer: AttachContainer;
   nativeMeetingProps?: NativeJitsiMeetingProps;
 }
+
+export const EMPTY_DEVICES: AvailableDevices = {
+  audioInput: [],
+  audioOutput: [],
+  videoInput: [],
+};
+
+export const EMPTY_SELECTED_DEVICES: SelectedDevices = {
+  audioInput: null,
+  audioOutput: null,
+  videoInput: null,
+};
