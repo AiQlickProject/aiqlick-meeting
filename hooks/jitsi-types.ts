@@ -50,6 +50,29 @@ export type ReactionKind =
   | "boo"
   | "love";
 
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: number;
+  isOwn: boolean;
+  isPrivate: boolean;
+}
+
+/**
+ * A live reaction broadcast across the meeting. Carries the sender name
+ * so the ReactionsOverlay can render "Tania reacted 👏" instead of a
+ * bare floating emoji. Cleared from state after ~3.5s by the overlay.
+ */
+export interface ReactionEvent {
+  id: string;
+  senderId: string;
+  senderName: string;
+  kind: ReactionKind;
+  timestamp: number;
+}
+
 export interface JitsiState {
   isJoined: boolean;
   isAudioMuted: boolean;
@@ -68,6 +91,8 @@ export interface JitsiState {
   participantCount: number;
   participants: ParticipantInfo[];
   transcripts: TranscriptChunk[];
+  chatMessages: ChatMessage[];
+  recentReactions: ReactionEvent[];
   unreadChatCount: number;
   availableDevices: AvailableDevices;
   selectedDevices: SelectedDevices;
@@ -86,6 +111,9 @@ export interface JitsiCommands {
   toggleSubtitles: () => void;
   setSubtitles: (visible: boolean) => void;
   sendReaction: (kind: ReactionKind) => void;
+  sendChatMessage: (text: string) => void;
+  /** Mark all chat messages as read (clears unreadChatCount). Called when the chat panel opens. */
+  markChatRead: () => void;
   toggleBlur: () => void;
   toggleNoiseSuppression: () => void;
   setAudioInputDevice: (device: MediaDevice) => void;
@@ -109,6 +137,8 @@ export type JitsiCommandName =
   | "setSubtitlesOn"
   | "setSubtitlesOff"
   | "sendReaction"
+  | "sendChatMessage"
+  | "markChatRead"
   | "toggleBlur"
   | "toggleNoiseSuppression"
   | "setAudioInputDevice"

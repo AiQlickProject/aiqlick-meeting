@@ -2,11 +2,13 @@ import { JITSI_BRANDING } from "@/lib/branding";
 
 import type {
   AvailableDevices,
+  ChatMessage,
   CreateJitsiEmbedArgs,
   JitsiCommandName,
   JitsiEmbedHandle,
   MediaDevice,
   ParticipantInfo,
+  ReactionEvent,
   ReactionKind,
   SelectedDevices,
   TranscriptChunk,
@@ -14,6 +16,21 @@ import type {
 import { EMPTY_SELECTED_DEVICES } from "./jitsi-types";
 
 const TRANSCRIPT_MAX_CHUNKS = 1000;
+const CHAT_MAX_MESSAGES = 500;
+const REACTION_TTL_MS = 3500;
+
+/**
+ * Payload we broadcast over Jitsi's endpoint text-message channel so
+ * every participant's ReactionsOverlay can render the reaction with
+ * the sender's name. Jitsi's built-in `sendReaction` doesn't surface
+ * the reactor's display name through the IFrame API, so we add a
+ * thin sidecar message ourselves.
+ */
+interface AiqlickReactionPayload {
+  type: "aiqlick-reaction";
+  kind: ReactionKind;
+  senderName: string;
+}
 
 export interface CreateJitsiEmbedWebArgs extends CreateJitsiEmbedArgs {
   container: HTMLElement;
@@ -133,6 +150,102 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
     args.onStateChange({ transcripts: Array.from(transcriptChunks.values()) });
   };
 
+  // Mutable chat log + reactions buffer. Both are mirrored into
+  // JitsiState via onStateChange whenever they change so the React UI
+  // can render them. We keep the authoritative copy here so the
+  // listener handlers don't need to read back through React state.
+  const chatLog: ChatMessage[] = [];
+  const reactionBuffer: ReactionEvent[] = [];
+  let unreadChat = 0;
+
+  // Local participant identity. Captured at videoConferenceJoined
+  // and kept fresh on displayNameChange so reaction broadcasts and
+  // outgoing chat messages know who "we" are.
+  let localId: string | null = null;
+  let localName: string = args.displayName?.trim() || "You";
+
+  const emitChat = () => {
+    args.onStateChange({
+      chatMessages: chatLog.slice(),
+      unreadChatCount: unreadChat,
+    });
+  };
+
+  const emitReactions = () => {
+    args.onStateChange({ recentReactions: reactionBuffer.slice() });
+  };
+
+  const pushReaction = (
+    senderId: string,
+    senderName: string,
+    kind: ReactionKind,
+  ) => {
+    const ev: ReactionEvent = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      senderId,
+      senderName,
+      kind,
+      timestamp: Date.now(),
+    };
+    reactionBuffer.push(ev);
+    emitReactions();
+    // The overlay also calls dismissReaction once its CSS animation
+    // ends. The hard timer here is the floor — if the overlay never
+    // mounts (e.g. side panel covers the stage) the buffer still
+    // drains cleanly.
+    setTimeout(() => {
+      const i = reactionBuffer.findIndex((r) => r.id === ev.id);
+      if (i >= 0) {
+        reactionBuffer.splice(i, 1);
+        emitReactions();
+      }
+    }, REACTION_TTL_MS);
+  };
+
+  const pushChatMessage = (
+    senderId: string,
+    senderName: string,
+    text: string,
+    isOwn: boolean,
+    isPrivate: boolean,
+  ) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    // Dedup defence: in dev (React StrictMode double-mount) and in
+    // some Jitsi versions the same message can arrive twice in quick
+    // succession — once via outgoingMessage and once echoed back via
+    // incomingMessage, or both listeners firing. If the previous
+    // entry is byte-identical and landed within 1.5s, skip the
+    // duplicate so the bubble doesn't render twice.
+    const now = Date.now();
+    const last = chatLog[chatLog.length - 1];
+    if (
+      last &&
+      last.text === trimmed &&
+      last.senderId === senderId &&
+      last.isOwn === isOwn &&
+      now - last.timestamp < 1500
+    ) {
+      return;
+    }
+    const msg: ChatMessage = {
+      id: `${now}-${Math.random().toString(36).slice(2, 8)}`,
+      senderId,
+      senderName,
+      text: trimmed,
+      timestamp: now,
+      isOwn,
+      isPrivate,
+    };
+    chatLog.push(msg);
+    while (chatLog.length > CHAT_MAX_MESSAGES) chatLog.shift();
+    // Own messages never bump unread. Incoming messages always do —
+    // the React layer fires markChatRead when the panel opens, which
+    // clears the counter.
+    if (!isOwn) unreadChat = Math.min(99, unreadChat + 1);
+    emitChat();
+  };
+
   const setCaptions = (visible: boolean) => {
     // setSubtitles(enabled, displaySubtitles, language) — Jigasi only
     // streams transcripts while `enabled` is true; `displaySubtitles`
@@ -191,6 +304,13 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
             hideConferenceTimer: true,
             hideParticipantsStats: true,
             startInTileView: true,
+            // Standard selfie mirror: when the user raises their right
+            // hand it appears on the right side of their self-view, the
+            // way Teams / Meet / Zoom render it. Forced via
+            // configOverwrite so it wins over any persisted
+            // `localFlipX: false` left over in returning users'
+            // localStorage from when we briefly shipped no-mirror.
+            localFlipX: true,
             transcription: {
               enabled: true,
               autoStartTranscription: true,
@@ -243,8 +363,11 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
           }
         };
 
-        api.addListener("videoConferenceJoined", () => {
+        api.addListener("videoConferenceJoined", (...a: unknown[]) => {
           isJoined = true;
+          const ev = a[0] as { id?: string; displayName?: string } | undefined;
+          localId = ev?.id ?? api?.myUserId?.() ?? null;
+          if (ev?.displayName) localName = ev.displayName;
           args.onStateChange({ isJoined: true, networkQuality: "good" });
           if (args.displayName) {
             try {
@@ -328,18 +451,101 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
           const ev = a[0] as { enabled?: boolean } | undefined;
           args.onStateChange({ isTileView: !!ev?.enabled });
         });
-        api.addListener("chatUpdated", (...a: unknown[]) => {
-          const ev = a[0] as { isOpen?: boolean; unreadCount?: number } | undefined;
-          args.onStateChange({
-            isChatOpen: !!ev?.isOpen,
-            unreadChatCount: ev?.unreadCount ?? 0,
-          });
+        // We intentionally do NOT subscribe to Jitsi's `chatUpdated`
+        // event. Reason: when we call `sendChatMessage` via the
+        // IFrame API, Jitsi internally emits chatUpdated with
+        // `isOpen: false` (because its native chat panel is in fact
+        // closed — we hide it with CSS and never toggle it). Echoing
+        // that into our React state shut our own ChatPanel every
+        // time the user pressed Enter to send. `state.isChatOpen` is
+        // owned by useJitsi.toggleChat (purely local) and our own
+        // unread counter is maintained by the incoming/outgoing
+        // listeners below.
+
+        // Remote message → push into the shared chatLog. `from` is the
+        // participant JID-derived id, `nick` is their display name.
+        // Some Jitsi builds echo our own chat messages back to us
+        // through incomingMessage; outgoingMessage already covered
+        // those, so ignore any incomingMessage where `from` matches
+        // the local participant.
+        api.addListener("incomingMessage", (...a: unknown[]) => {
+          const ev = a[0] as
+            | {
+                from?: string;
+                message?: string;
+                nick?: string;
+                privateMessage?: boolean;
+              }
+            | undefined;
+          if (!ev?.message) return;
+          const myId = localId ?? api?.myUserId?.() ?? null;
+          if (myId && ev.from && ev.from === myId) return;
+          pushChatMessage(
+            ev.from ?? "",
+            (ev.nick || "Guest").trim(),
+            ev.message,
+            false,
+            !!ev.privateMessage,
+          );
+        });
+
+        // Our own outgoing chat message — Jitsi echoes it back via
+        // this event, so we don't need a parallel "I just sent it"
+        // optimistic insert.
+        api.addListener("outgoingMessage", (...a: unknown[]) => {
+          const ev = a[0] as
+            | { message?: string; privateMessage?: boolean }
+            | undefined;
+          if (!ev?.message) return;
+          pushChatMessage(
+            localId ?? "self",
+            localName,
+            ev.message,
+            true,
+            !!ev.privateMessage,
+          );
+        });
+
+        // Cross-client reaction broadcast: we send our own reactions
+        // via `sendEndpointTextMessage` so every participant gets the
+        // reactor's display name (Jitsi's built-in `sendReaction`
+        // doesn't surface it through the IFrame API).
+        api.addListener("endpointTextMessageReceived", (...a: unknown[]) => {
+          const ev = a[0] as
+            | {
+                data?: {
+                  senderInfo?: { id?: string; jid?: string };
+                  eventData?: { text?: string; name?: string };
+                };
+              }
+            | undefined;
+          const raw = ev?.data?.eventData?.text;
+          if (!raw) return;
+          let parsed: AiqlickReactionPayload | null = null;
+          try {
+            const obj = JSON.parse(raw);
+            if (obj?.type === "aiqlick-reaction") {
+              parsed = obj as AiqlickReactionPayload;
+            }
+          } catch {
+            return;
+          }
+          if (!parsed) return;
+          // Ignore our own broadcast — the local sender already
+          // pushed the reaction via pushReaction in the command path.
+          const senderId = ev?.data?.senderInfo?.id ?? "";
+          if (senderId && localId && senderId === localId) return;
+          pushReaction(
+            senderId,
+            (parsed.senderName || "Someone").trim(),
+            parsed.kind,
+          );
         });
         api.addListener("raiseHandUpdated", (...a: unknown[]) => {
           const ev = a[0] as { id?: string; handRaised?: number } | undefined;
           if (!ev) return;
-          const localId = api?.myUserId?.();
-          if (localId && ev.id && ev.id !== localId) return;
+          const myId = localId ?? api?.myUserId?.() ?? null;
+          if (myId && ev.id && ev.id !== myId) return;
           args.onStateChange({ isHandRaised: (ev.handRaised ?? 0) > 0 });
         });
         api.addListener("recordingStatusChanged", (...a: unknown[]) => {
@@ -363,7 +569,8 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
 
         const refreshParticipants = () => {
           try {
-            const localId = api?.myUserId?.();
+            const myId = localId ?? api?.myUserId?.() ?? null;
+            if (myId && !localId) localId = myId;
             const list = api?.getParticipantsInfo?.() ?? [];
             const participants: ParticipantInfo[] = list.map((p) => ({
               id: p.participantId,
@@ -371,8 +578,12 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
                 (p.displayName || p.formattedDisplayName || "").trim() || "Guest",
               audioMuted: false,
               videoMuted: false,
-              isLocal: !!localId && p.participantId === localId,
+              isLocal: !!myId && p.participantId === myId,
             }));
+            // Keep localName in sync — the user can rename mid-call
+            // and our reaction broadcasts need the current value.
+            const me = participants.find((p) => p.isLocal);
+            if (me?.displayName) localName = me.displayName;
             const count = api?.getNumberOfParticipants?.() ?? participants.length;
             args.onStateChange({ participants, participantCount: count });
           } catch {
@@ -445,30 +656,80 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
         case "sendReaction": {
           const kind = rest[0] as ReactionKind;
           if (!kind) return;
+          // Native sendReaction drives Jitsi's own animation pipeline
+          // (we hide its floating emoji via CSS, but the moderator
+          // panel and analytics still consume it). Keep firing it.
           try {
             api?.executeCommand("sendReaction", kind);
           } catch (err) {
             console.warn("[Jitsi] sendReaction failed:", err);
           }
+          // Sidecar broadcast so every participant's ReactionsOverlay
+          // gets the reactor's display name. Empty `to` broadcasts to
+          // the whole conference.
+          const payload: AiqlickReactionPayload = {
+            type: "aiqlick-reaction",
+            kind,
+            senderName: localName,
+          };
+          try {
+            api?.executeCommand(
+              "sendEndpointTextMessage",
+              "",
+              JSON.stringify(payload),
+            );
+          } catch (err) {
+            console.warn("[Jitsi] reaction sidecar broadcast failed:", err);
+          }
+          // Optimistic local render — don't wait for our own broadcast
+          // to bounce back.
+          pushReaction(localId ?? "self", localName, kind);
           return;
         }
-        case "toggleBlur":
+        case "sendChatMessage": {
+          const text = (rest[0] as string | undefined)?.trim();
+          if (!text) return;
           try {
-            const next = !isBlurEnabled;
-            // setBackgroundEffect with `blurValue: 25` matches Jitsi's
-            // built-in "blur my background" preset. Disabling passes
-            // backgroundEffectEnabled=false to clear the effect.
-            api?.executeCommand("setVideoBackgroundEffect", {
-              backgroundEffectEnabled: next,
-              backgroundType: next ? "blur" : "none",
-              blurValue: next ? 25 : 0,
-            });
+            api?.executeCommand("sendChatMessage", text);
+            // Jitsi will echo the message back via the outgoingMessage
+            // listener — no optimistic insert needed.
+          } catch (err) {
+            console.warn("[Jitsi] sendChatMessage failed:", err);
+          }
+          return;
+        }
+        case "markChatRead":
+          if (unreadChat !== 0) {
+            unreadChat = 0;
+            emitChat();
+          }
+          return;
+        case "toggleBlur": {
+          const next = !isBlurEnabled;
+          // Jitsi's `setVideoBackgroundEffect` accepts `backgroundType`
+          // values 'blur' / 'slight-blur' / 'image' / 'desktop-share'.
+          // 'none' is NOT in the enum — when disabling we just pass
+          // `backgroundEffectEnabled: false` with no type. The effect
+          // also silently no-ops if the local camera is off, so the UI
+          // should keep the toggle visually in sync regardless.
+          try {
+            api?.executeCommand(
+              "setVideoBackgroundEffect",
+              next
+                ? {
+                    backgroundEffectEnabled: true,
+                    backgroundType: "blur",
+                    blurValue: 25,
+                  }
+                : { backgroundEffectEnabled: false },
+            );
             isBlurEnabled = next;
             args.onStateChange({ isBlurEnabled: next });
           } catch (err) {
             console.warn("[Jitsi] toggleBlur failed:", err);
           }
           return;
+        }
         case "toggleNoiseSuppression":
           try {
             api?.executeCommand("toggleNoiseSuppression");
