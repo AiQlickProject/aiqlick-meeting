@@ -298,6 +298,52 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
+function formatBody(body: any): string {
+  if (!body) return "";
+  if (typeof body === "string") return body;
+
+  try {
+    const formatValue = (val: any, depth = 0): string => {
+      const indent = "  ".repeat(depth);
+      if (val === null || val === undefined) return "";
+
+      if (Array.isArray(val)) {
+        if (val.length === 0) return "None";
+        return val
+          .map((item) => {
+            if (typeof item === "object") {
+              return formatValue(item, depth);
+            }
+            return `${indent}• ${item}`;
+          })
+          .join("\n");
+      }
+
+      if (typeof val === "object") {
+        return Object.entries(val)
+          .map(([key, value]) => {
+            const formattedKey = key
+              .replace(/_/g, " ")
+              .replace(/\b\w/g, (c) => c.toUpperCase());
+
+            if (typeof value === "object" && value !== null) {
+              const inner = formatValue(value, depth + 1);
+              return `${indent}${formattedKey}:\n${inner}`;
+            }
+            return `${indent}${formattedKey}: ${value}`;
+          })
+          .join("\n");
+      }
+
+      return `${indent}${val}`;
+    };
+
+    return formatValue(body);
+  } catch {
+    return JSON.stringify(body, null, 2);
+  }
+}
+
 function ResultsView({
   insight,
   onRegenerate,
@@ -307,7 +353,7 @@ function ResultsView({
   onRegenerate: () => void;
   regenerating: boolean;
 }) {
-  const sections: Array<{ title: string; body: string | null }> = [
+  const sections: Array<{ title: string; body: any }> = [
     { title: "Overview", body: insight.fullReport },
     { title: "Skills assessment", body: insight.skillsAssessment },
     { title: "Communication", body: insight.communicationAnalysis },
@@ -336,18 +382,19 @@ function ResultsView({
         />
       </XStack>
 
-      {sections.map((s) =>
-        s.body ? (
+      {sections.map((s) => {
+        const formattedBody = formatBody(s.body);
+        return formattedBody ? (
           <YStack key={s.title} gap={6}>
             <Text color="rgba(255,255,255,0.7)" fontSize={10} fontWeight="700" letterSpacing={1}>
               {s.title.toUpperCase()}
             </Text>
             <Text color="#fff" fontSize={12} lineHeight={18}>
-              {s.body}
+              {formattedBody}
             </Text>
           </YStack>
-        ) : null,
-      )}
+        ) : null;
+      })}
     </YStack>
   );
 }
