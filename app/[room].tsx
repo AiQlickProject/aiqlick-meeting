@@ -1,10 +1,8 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
 import { XStack, YStack } from "tamagui";
 
 import InsightsPanel from "@/components/InsightsPanel";
-import InviteToast from "@/components/InviteToast";
 import ParticipantsPanel from "@/components/ParticipantsPanel";
 import TranscriptPanel from "@/components/TranscriptPanel";
 
@@ -65,11 +63,6 @@ export default function MeetingRoute() {
     displayName: resolvedDisplayName,
   });
 
-  // Once the iframe reports the conference has been left (hangup, kick,
-  // or remote close), navigate back to the meetings list. Otherwise our
-  // wrapper sits over an iframe that has navigated to Jitsi's `/`
-  // dashboard and any further toolbar action re-creates a half-broken
-  // session against an iframe that's already moved on.
   const router = useRouter();
   const wasJoined = useRef(false);
   useEffect(() => {
@@ -85,42 +78,17 @@ export default function MeetingRoute() {
 
   const handleHangup = useCallback(() => {
     commands.hangup();
-    // Jitsi fires `videoConferenceLeft` after `hangup`; the effect above
-    // catches it and navigates. We also navigate immediately so the user
-    // never sees the bare Jitsi landing for the brief moment between
-    // hangup and the event firing.
     router.replace("/");
   }, [commands, router]);
 
-  const [inviteStatus, setInviteStatus] = useState<"idle" | "copied" | "failed">("idle");
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
 
   const meetingIdStr = typeof meetingId === "string" ? meetingId : null;
 
-  const handleInvite = useCallback(() => {
-    if (Platform.OS !== "web" || typeof window === "undefined") return;
-    // Strip the JWT before sharing — never leak the token in a copied link.
-    const url = new URL(window.location.href);
-    url.searchParams.delete("jwt");
-    const shareUrl = url.toString();
-    void (async () => {
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(shareUrl);
-        } else {
-          throw new Error("Clipboard API unavailable");
-        }
-        setInviteStatus("copied");
-      } catch {
-        setInviteStatus("failed");
-      }
-      setTimeout(() => setInviteStatus("idle"), 2500);
-    })();
-  }, []);
-
   // Build the JWT-stripped share URL once per render so ParticipantsPanel
-  // can hand it straight to the clipboard without re-doing the parse.
+  // can hand it straight to the clipboard. The invite button used to live
+  // on the toolbar too; it now only exists inside the People panel.
   const shareUrl = (() => {
     if (typeof window === "undefined") return "";
     try {
@@ -131,6 +99,24 @@ export default function MeetingRoute() {
       return "";
     }
   })();
+
+  const handleToggleParticipants = useCallback(() => {
+    if (isInsightsOpen) setIsInsightsOpen(false);
+    if (isTranscriptOpen) setIsTranscriptOpen(false);
+    commands.toggleParticipants();
+  }, [commands, isInsightsOpen, isTranscriptOpen]);
+
+  const handleToggleTranscript = useCallback(() => {
+    if (state.isParticipantsOpen) commands.toggleParticipants();
+    if (isInsightsOpen) setIsInsightsOpen(false);
+    setIsTranscriptOpen((v) => !v);
+  }, [commands, isInsightsOpen, state.isParticipantsOpen]);
+
+  const handleToggleInsights = useCallback(() => {
+    if (state.isParticipantsOpen) commands.toggleParticipants();
+    if (isTranscriptOpen) setIsTranscriptOpen(false);
+    setIsInsightsOpen((v) => !v);
+  }, [commands, isTranscriptOpen, state.isParticipantsOpen]);
 
   // Only one side panel is visible at a time. Toggling one closes the
   // others so the video stage doesn't get squeezed below a usable size.
@@ -150,11 +136,10 @@ export default function MeetingRoute() {
         participantCount={state.participantCount}
         isJoined={state.isJoined}
         isModerator={decodeJwtIsModerator(jwtStr)}
+        isRecording={state.isRecording}
+        networkQuality={state.networkQuality}
       />
 
-      {/* Body is a horizontal flex — video stage on the left, optional
-          side panel on the right. The iframe shrinks naturally because
-          its parent is `flex: 1` and the panel is a fixed width sibling. */}
       <XStack flex={1}>
         <YStack flex={1} position="relative">
           <JitsiEmbed
@@ -175,28 +160,20 @@ export default function MeetingRoute() {
               onToggleAudio={commands.toggleAudio}
               onToggleVideo={commands.toggleVideo}
               onToggleScreenShare={commands.toggleScreenShare}
-              onToggleTileView={commands.toggleTileView}
+              onSetLayout={commands.setLayout}
               onToggleChat={commands.toggleChat}
-              onToggleParticipants={() => {
-                if (isInsightsOpen) setIsInsightsOpen(false);
-                if (isTranscriptOpen) setIsTranscriptOpen(false);
-                commands.toggleParticipants();
-              }}
+              onToggleParticipants={handleToggleParticipants}
               onToggleRaiseHand={commands.toggleRaiseHand}
-              onToggleSubtitles={commands.toggleSubtitles}
-              onToggleTranscript={() => {
-                if (state.isParticipantsOpen) commands.toggleParticipants();
-                if (isInsightsOpen) setIsInsightsOpen(false);
-                setIsTranscriptOpen((v) => !v);
-              }}
+              onSendReaction={commands.sendReaction}
+              onToggleTranscript={handleToggleTranscript}
               transcriptOpen={isTranscriptOpen}
-              onToggleInsights={() => {
-                if (state.isParticipantsOpen) commands.toggleParticipants();
-                if (isTranscriptOpen) setIsTranscriptOpen(false);
-                setIsInsightsOpen((v) => !v);
-              }}
+              onToggleInsights={handleToggleInsights}
               insightsOpen={isInsightsOpen}
-              onInvite={handleInvite}
+              onToggleBlur={commands.toggleBlur}
+              onToggleNoiseSuppression={commands.toggleNoiseSuppression}
+              onPickAudioInput={commands.setAudioInputDevice}
+              onPickAudioOutput={commands.setAudioOutputDevice}
+              onPickVideoInput={commands.setVideoInputDevice}
               onHangup={handleHangup}
             />
           </YStack>
@@ -225,13 +202,12 @@ export default function MeetingRoute() {
             <TranscriptPanel
               state={state}
               onClose={() => setIsTranscriptOpen(false)}
+              onSetCaptions={commands.setSubtitles}
               filenameBase={title}
             />
           </YStack>
         )}
       </XStack>
-
-      <InviteToast status={inviteStatus} />
     </YStack>
   );
 }

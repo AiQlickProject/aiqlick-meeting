@@ -1,25 +1,31 @@
 import { useEffect, useState } from "react";
-import { Video, Users } from "@tamagui/lucide-icons";
+import { Video, Users, Wifi, WifiOff } from "@tamagui/lucide-icons";
 import { Circle, View, XStack, YStack, Text } from "tamagui";
+
+import type { NetworkQuality } from "@/hooks/jitsi-types";
 
 interface Props {
   title: string;
   participantCount: number;
   isJoined: boolean;
   isModerator?: boolean;
+  isRecording?: boolean;
+  networkQuality?: NetworkQuality;
 }
 
 /**
  * Top header bar. Primary-tinted icon + meeting title + status,
- * live timer in the centre, participant count on the right. Mirrors
- * the aiqlick-frontend `MeetingHeader` so the meeting feels
- * continuous with the rest of the product on every platform.
+ * live timer in the centre, recording / network / participant pills on
+ * the right. Mirrors the Teams in-meeting header shape — primary
+ * identity left, timer middle, status indicators right.
  */
 export default function MeetingHeader({
   title,
   participantCount,
   isJoined,
   isModerator = false,
+  isRecording = false,
+  networkQuality = "unknown",
 }: Props) {
   const elapsed = useElapsedSeconds(isJoined);
   const statusLabel = isJoined
@@ -78,21 +84,73 @@ export default function MeetingHeader({
         </Text>
       </XStack>
 
-      <XStack
-        alignItems="center"
-        gap={8}
-        paddingHorizontal={12}
-        paddingVertical={6}
-        borderRadius={9999}
-        backgroundColor="rgba(31, 41, 55, 0.6)"
-        borderWidth={1}
-        borderColor="rgba(55, 65, 81, 0.5)"
-      >
-        <Users size={16} color="#9ca3af" />
-        <Text color="$color" fontSize={14} fontWeight="500">
-          {participantCount}
-        </Text>
+      <XStack alignItems="center" gap={8}>
+        {isRecording ? <RecordingPill /> : null}
+        {isJoined ? <NetworkPill quality={networkQuality} /> : null}
+        <XStack
+          alignItems="center"
+          gap={8}
+          paddingHorizontal={12}
+          paddingVertical={6}
+          borderRadius={9999}
+          backgroundColor="rgba(31, 41, 55, 0.6)"
+          borderWidth={1}
+          borderColor="rgba(55, 65, 81, 0.5)"
+        >
+          <Users size={16} color="#9ca3af" />
+          <Text color="$color" fontSize={14} fontWeight="500">
+            {participantCount}
+          </Text>
+        </XStack>
       </XStack>
+    </XStack>
+  );
+}
+
+function RecordingPill() {
+  return (
+    <XStack
+      alignItems="center"
+      gap={6}
+      paddingHorizontal={10}
+      paddingVertical={6}
+      borderRadius={9999}
+      backgroundColor="rgba(220, 38, 38, 0.18)"
+      borderWidth={1}
+      borderColor="rgba(220, 38, 38, 0.5)"
+    >
+      <Circle size={8} backgroundColor="#ef4444" />
+      <Text color="#fecaca" fontSize={11} fontWeight="700" letterSpacing={1}>
+        REC
+      </Text>
+    </XStack>
+  );
+}
+
+function NetworkPill({ quality }: { quality: NetworkQuality }) {
+  const meta = {
+    good: { color: "#22c55e", label: "Good" },
+    fair: { color: "#f59e0b", label: "Fair" },
+    poor: { color: "#ef4444", label: "Poor" },
+    unknown: { color: "#9ca3af", label: "—" },
+  }[quality];
+  const Icon = quality === "poor" ? WifiOff : Wifi;
+  return (
+    <XStack
+      alignItems="center"
+      gap={6}
+      paddingHorizontal={10}
+      paddingVertical={6}
+      borderRadius={9999}
+      backgroundColor="rgba(31, 41, 55, 0.6)"
+      borderWidth={1}
+      borderColor="rgba(55, 65, 81, 0.5)"
+      accessibilityLabel={`Connection ${meta.label}`}
+    >
+      <Icon size={13} color={meta.color} />
+      <Text color="#d1d5db" fontSize={11} fontWeight="600">
+        {meta.label}
+      </Text>
     </XStack>
   );
 }

@@ -7,8 +7,12 @@ import type {
   JitsiCommands,
   JitsiEmbedHandle,
   JitsiState,
+  LayoutMode,
+  MediaDevice,
   NativeJitsiRef,
+  ReactionKind,
 } from "./jitsi-types";
+import { EMPTY_DEVICES, EMPTY_SELECTED_DEVICES } from "./jitsi-types";
 import { createJitsiEmbed } from "./jitsi-embed";
 
 const INITIAL: JitsiState = {
@@ -22,10 +26,16 @@ const INITIAL: JitsiState = {
   isChatOpen: false,
   isParticipantsOpen: false,
   isHandRaised: false,
+  isBlurEnabled: false,
+  isNoiseSuppressionOn: false,
+  isRecording: false,
+  networkQuality: "unknown",
   participantCount: 1,
   participants: [],
   transcripts: [],
   unreadChatCount: 0,
+  availableDevices: EMPTY_DEVICES,
+  selectedDevices: EMPTY_SELECTED_DEVICES,
   error: null,
 };
 
@@ -35,17 +45,6 @@ interface UseJitsiArgs {
   displayName?: string | null;
 }
 
-/**
- * Public entry point — same shape on every platform. Internally
- * delegates to the platform-specific embed (`jitsi-embed.web.ts` for
- * browser, `jitsi-embed.ts` for native). Both report state via the
- * same `JitsiState` interface so the surrounding UI is written once.
- *
- * Web flow: parent renders <JitsiEmbed attachContainer={...} />.
- * That component assigns its `<div>` via callback ref, which calls
- * `attachContainer(el)` here. We then create the Jitsi handle with
- * the element already in hand — no useEffect ordering race.
- */
 export function useJitsi({ roomName, jwt, displayName }: UseJitsiArgs) {
   const [state, setState] = useState<JitsiState>(INITIAL);
   const stateRef = useRef<JitsiState>(INITIAL);
@@ -78,7 +77,6 @@ export function useJitsi({ roomName, jwt, displayName }: UseJitsiArgs) {
         handleRef.current = null;
       }
       if (!roomName) return;
-      // On native, container is not used.
       if (Platform.OS === "web" && !container) return;
       handleRef.current = createJitsiEmbed({
         domain,
@@ -107,8 +105,6 @@ export function useJitsi({ roomName, jwt, displayName }: UseJitsiArgs) {
     [createHandle],
   );
 
-  // Native path: there's no DOM container, so create the handle as
-  // soon as we have a roomName.
   useEffect(() => {
     if (Platform.OS === "web") return;
     createHandle(null);
@@ -118,7 +114,6 @@ export function useJitsi({ roomName, jwt, displayName }: UseJitsiArgs) {
     };
   }, [createHandle]);
 
-  // Web path: clean up on unmount.
   useEffect(() => {
     return () => {
       handleRef.current?.dispose();
@@ -131,11 +126,26 @@ export function useJitsi({ roomName, jwt, displayName }: UseJitsiArgs) {
     toggleVideo: () => handleRef.current?.execute("toggleVideo"),
     toggleScreenShare: () => handleRef.current?.execute("toggleScreenShare"),
     toggleTileView: () => handleRef.current?.execute("toggleTileView"),
+    setLayout: (mode: LayoutMode) =>
+      handleRef.current?.execute(mode === "tile" ? "setLayoutTile" : "setLayoutSpeaker"),
     toggleChat: () => handleRef.current?.execute("toggleChat"),
     toggleParticipants: () =>
       setState((s) => ({ ...s, isParticipantsOpen: !s.isParticipantsOpen })),
     toggleRaiseHand: () => handleRef.current?.execute("toggleRaiseHand"),
     toggleSubtitles: () => handleRef.current?.execute("toggleSubtitles"),
+    setSubtitles: (visible: boolean) =>
+      handleRef.current?.execute(visible ? "setSubtitlesOn" : "setSubtitlesOff"),
+    sendReaction: (kind: ReactionKind) =>
+      handleRef.current?.execute("sendReaction", kind),
+    toggleBlur: () => handleRef.current?.execute("toggleBlur"),
+    toggleNoiseSuppression: () => handleRef.current?.execute("toggleNoiseSuppression"),
+    setAudioInputDevice: (d: MediaDevice) =>
+      handleRef.current?.execute("setAudioInputDevice", d),
+    setVideoInputDevice: (d: MediaDevice) =>
+      handleRef.current?.execute("setVideoInputDevice", d),
+    setAudioOutputDevice: (d: MediaDevice) =>
+      handleRef.current?.execute("setAudioOutputDevice", d),
+    refreshDevices: () => handleRef.current?.execute("refreshDevices"),
     hangup: () => handleRef.current?.execute("hangup"),
   };
 
