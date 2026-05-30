@@ -35,6 +35,13 @@ import { aiqlickTokens } from "@/tamagui.config";
 type ViewMode = "list" | "calendar";
 type TypeFilter = "ALL" | "MEETINGS" | "INTERVIEWS";
 
+/**
+ * Disable SSR for the home page — Tamagui components use browser-only
+ * APIs, auth state lives in async storage, and Pressable `hovered`
+ * state can't be server-rendered.
+ */
+export const ssr = false;
+
 const STATUS_OPTIONS = [
   { value: "ALL", label: "All Statuses" },
   { value: "SCHEDULED", label: "Scheduled" },

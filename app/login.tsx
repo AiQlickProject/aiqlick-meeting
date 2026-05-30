@@ -18,7 +18,10 @@ import { aiqlickTokens } from "@/tamagui.config";
  * underlined floating-label inputs, solid primary CTA. Built entirely
  * on top of our TW* primitives so it tracks any future design-token
  * changes without per-screen edits.
+ *
+ * SSR disabled — Tamagui components use browser-only APIs.
  */
+export const ssr = false;
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useUserAuth();

@@ -28,7 +28,14 @@ import {
  *
  * `useJitsi` exposes the same shape regardless of platform; the
  * outer UI is written once.
+ *
+ * SSR is disabled because:
+ * - Tamagui uses browser-only APIs (window, document) that fail on server
+ * - The Jitsi iframe API can only run in a browser
+ * - Auth state lives in localStorage / SecureStore which is async
+ * - Hydration mismatches if any date/time is rendered server vs client
  */
+export const ssr = false;
 export default function MeetingRoute() {
   const {
     room: rawRoom,

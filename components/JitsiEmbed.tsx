@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import { JitsiMeeting } from "@jitsi/react-native-sdk";
 import { StyleSheet } from "react-native";
 
@@ -7,6 +7,23 @@ import type {
   NativeJitsiMeetingProps,
   NativeJitsiRef,
 } from "@/hooks/jitsi-types";
+
+/**
+ * Wrapper that only renders the native Jitsi SDK component after
+ * hydration — prevents SSR/hydration mismatch since the JitsiMeeting
+ * component cannot be server-rendered.
+ */
+function NativeMeetingClientOnly(
+  props: NativeJitsiMeetingProps & { meetingRef: NativeJitsiRef },
+) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    // Delay one tick so we're firmly in client-only territory
+    setMounted(true);
+  }, []);
+  if (!mounted) return null;
+  return <NativeMeeting {...props} ref={props.meetingRef} />;
+}
 
 const NativeMeeting = forwardRef<NativeJitsiRef, NativeJitsiMeetingProps>(
   function NativeMeeting(props, ref) {
@@ -83,9 +100,9 @@ export default function JitsiEmbed({ nativeMeetingProps }: JitsiEmbedProps) {
   }
 
   return (
-    <NativeMeeting
+    <NativeMeetingClientOnly
       {...nativeMeetingProps}
-      ref={nativeMeetingProps.meetingRef}
+      meetingRef={nativeMeetingProps.meetingRef}
     />
   );
 }
