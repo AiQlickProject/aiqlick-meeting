@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import {
   Brain,
@@ -615,18 +615,28 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
       errorPolicy: "ignore",
     });
 
+  // Local flag so the UI transitions to "Generating" immediately on button
+  // press, before the next poll confirms PENDING status from the backend.
+  const [pendingGenerate, setPendingGenerate] = useState(false);
+
   const insight = data?.latestMeetingInsight ?? null;
   const status = insight?.status;
-  const isGenerating = status === "PENDING" || status === "GENERATING" || status === "PROCESSING";
+  const isServerGenerating = status === "PENDING" || status === "GENERATING" || status === "PROCESSING";
+  // Treat as generating if either locally pending OR server confirmed
+  const isGenerating = pendingGenerate || isServerGenerating;
 
   useEffect(() => {
-    if (isGenerating) {
+    if (isServerGenerating) {
+      // Backend confirmed generation — clear local flag and keep polling
+      setPendingGenerate(false);
       startPolling(4000);
-    } else {
+    } else if (!pendingGenerate) {
+      // Only stop polling if we are not in a local-pending state
       stopPolling();
     }
     return () => { stopPolling(); };
-  }, [isGenerating, startPolling, stopPolling]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isServerGenerating, startPolling, stopPolling]);
 
   const [initialize, { loading: initializing }] = useMutation<InitializeMeetingInsightResult>(
     INITIALIZE_MEETING_INSIGHT,
@@ -634,14 +644,17 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
 
   const onGenerate = async () => {
     if (!meetingId) return;
+    // Immediately flag as pending — prevents useEffect from killing the poll
+    setPendingGenerate(true);
     try {
       await initialize({
         variables: { input: { meetingId, interviewId: interviewId ?? null } },
       });
-      await refetch();
+      // Kick off the first refetch; useEffect will handle continued polling
+      // once the backend confirms PENDING status
       startPolling(4000);
     } catch {
-      /* error surfaced via the query refetch / latest insight */
+      setPendingGenerate(false);
     }
   };
 
