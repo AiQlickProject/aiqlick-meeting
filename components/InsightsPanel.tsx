@@ -17,7 +17,9 @@ import {
   Target,
   Users,
   TrendingUp,
+  Download,
 } from "@tamagui/lucide-icons";
+import { Platform } from "react-native";
 import { ActivityIndicator, Pressable } from "react-native";
 import { ScrollView, View, XStack, YStack, Text } from "tamagui";
 
@@ -192,16 +194,63 @@ function Divider() {
   return <View height={1} backgroundColor={C.border} />;
 }
 
-function BulletList({ items }: { items: string[] }) {
+/**
+ * Normalises a list entry that may be either a plain string OR a
+ * structured object (e.g. `{ decision, context }` for key decisions).
+ * Returns `{ primary, secondary }` so the renderer can stack the two
+ * lines without leaking `[object Object]` for the object shape.
+ */
+function normalizeBulletItem(item: unknown): { primary: string; secondary?: string } {
+  if (item == null) return { primary: "" };
+  if (typeof item === "string") return { primary: item };
+  if (typeof item === "object") {
+    const o = item as Record<string, unknown>;
+    const primary =
+      (o.decision as string) ??
+      (o.action as string) ??
+      (o.point as string) ??
+      (o.text as string) ??
+      (o.title as string) ??
+      (o.name as string) ??
+      (o.description as string) ??
+      "";
+    const secondary =
+      (o.context as string) ??
+      (o.detail as string) ??
+      (o.note as string) ??
+      undefined;
+    if (primary) return { primary, secondary };
+    // Fallback — pretty-print the object so we never show
+    // "[object Object]" to the user.
+    try {
+      return { primary: JSON.stringify(item) };
+    } catch {
+      return { primary: "" };
+    }
+  }
+  return { primary: String(item) };
+}
+
+function BulletList({ items }: { items: unknown[] }) {
   if (!items?.length) return <Text color={C.textMuted} fontSize={11}>None</Text>;
   return (
     <YStack gap={5}>
-      {items.map((item, i) => (
-        <XStack key={i} gap={7} alignItems="flex-start">
-          <View width={4} height={4} borderRadius={999} backgroundColor={C.primary} marginTop={5} flexShrink={0} />
-          <Text color={C.textSecondary} fontSize={11} lineHeight={17} flex={1}>{String(item)}</Text>
-        </XStack>
-      ))}
+      {items.map((item, i) => {
+        const { primary, secondary } = normalizeBulletItem(item);
+        return (
+          <XStack key={i} gap={7} alignItems="flex-start">
+            <View width={4} height={4} borderRadius={999} backgroundColor={C.primary} marginTop={5} flexShrink={0} />
+            <YStack flex={1} gap={2}>
+              <Text color={C.textSecondary} fontSize={11} lineHeight={17}>{primary}</Text>
+              {secondary ? (
+                <Text color={C.textMuted} fontSize={10} lineHeight={14} fontStyle="italic">
+                  {secondary}
+                </Text>
+              ) : null}
+            </YStack>
+          </XStack>
+        );
+      })}
     </YStack>
   );
 }
@@ -239,7 +288,10 @@ function OverviewSection({ data }: { data: any }) {
   const outcome = data.outcome ?? data.Outcome;
   const purpose = data.purpose ?? data.Purpose;
   const summary = data.summary ?? data.Summary;
-  const keyDecisions: string[] = data.key_decisions ?? data["Key Decisions"] ?? [];
+  // `key_decisions` comes through as either string[] (older payloads)
+  // or [{ decision, context }, ...] (current LLM template). The
+  // BulletList renderer handles both shapes via normalizeBulletItem.
+  const keyDecisions: unknown[] = data.key_decisions ?? data["Key Decisions"] ?? [];
   const durationAssessment = data.duration_assessment ?? data["Duration Assessment"];
 
   const oc = outcomeColor(outcome);
@@ -292,7 +344,7 @@ function SkillsSection({ data }: { data: any }) {
   const outcome = data.outcome ?? data.Outcome;
   const purpose = data.purpose ?? data.Purpose;
   const summary = data.summary ?? data.Summary;
-  const keyDecisions: string[] = data.key_decisions ?? data["Key Decisions"] ?? [];
+  const keyDecisions: unknown[] = data.key_decisions ?? data["Key Decisions"] ?? [];
 
   const oc = outcomeColor(outcome);
 
@@ -642,13 +694,23 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
     INITIALIZE_MEETING_INSIGHT,
   );
 
-  const onGenerate = async () => {
+  const onGenerate = async (forceRefresh: boolean = false) => {
     if (!meetingId) return;
     // Immediately flag as pending — prevents useEffect from killing the poll
     setPendingGenerate(true);
     try {
       await initialize({
-        variables: { input: { meetingId, interviewId: interviewId ?? null } },
+        variables: {
+          input: {
+            meetingId,
+            interviewId: interviewId ?? null,
+            // The backend enforces a 5-minute cool-down between
+            // generations per meeting. When the user explicitly hits
+            // "Regenerate" we pass forceRefresh so the request
+            // bypasses that gate and produces a new version.
+            forceRefresh,
+          },
+        },
       });
       // Kick off the first refetch; useEffect will handle continued polling
       // once the backend confirms PENDING status
@@ -657,6 +719,7 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
       setPendingGenerate(false);
     }
   };
+  const onRegenerate = () => onGenerate(true);
 
   if (!isOpen) return null;
 
@@ -727,17 +790,17 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
         )}
 
         {meetingId && !loading && !insight && !isGenerating && (
-          <EmptyState onGenerate={onGenerate} loading={initializing} />
+          <EmptyState onGenerate={() => onGenerate(false)} loading={initializing} />
         )}
 
         {meetingId && isGenerating && <GeneratingState />}
 
         {meetingId && insight?.status === "FAILED" && (
-          <FailureState message={insight.errorMessage} onRetry={onGenerate} retrying={initializing} />
+          <FailureState message={insight.errorMessage} onRetry={onRegenerate} retrying={initializing} />
         )}
 
         {meetingId && insight?.status === "COMPLETED" && (
-          <ResultsView insight={insight} onRegenerate={onGenerate} regenerating={initializing} />
+          <ResultsView insight={insight} onRegenerate={onRegenerate} regenerating={initializing} />
         )}
       </ScrollView>
     </YStack>
@@ -860,15 +923,25 @@ function ResultsView({
             <MetaChip icon={<FileText size={10} color={C.textMuted} />} label={`${insight.transcriptLength} chars`} />
           )}
         </XStack>
-        <TWButton
-          label="Regenerate"
-          variant="ghost"
-          color="default"
-          size="sm"
-          icon={<RefreshCw size={11} color={C.textSecondary} />}
-          isLoading={regenerating}
-          onPress={onRegenerate}
-        />
+        <XStack gap={6}>
+          <TWButton
+            label="Download"
+            variant="ghost"
+            color="default"
+            size="sm"
+            icon={<Download size={11} color={C.textSecondary} />}
+            onPress={() => downloadInsightMarkdown(insight)}
+          />
+          <TWButton
+            label="Regenerate"
+            variant="ghost"
+            color="default"
+            size="sm"
+            icon={<RefreshCw size={11} color={C.textSecondary} />}
+            isLoading={regenerating}
+            onPress={onRegenerate}
+          />
+        </XStack>
       </XStack>
 
       <OverviewSection data={fullReport} />
@@ -878,4 +951,58 @@ function ResultsView({
       <RedFlagsSection data={redFlagsAndConcerns} />
     </YStack>
   );
+}
+
+/**
+ * Web-only: trigger a browser download of the insight's `fullReport`
+ * markdown. The fullReport field is already a markdown string produced
+ * by the bg-tasks pipeline (see `meeting_insight/service.py`), so we
+ * just wrap it in a Blob and click an invisible <a download>. Native
+ * Platforms get a no-op — adding share-sheet integration would mean
+ * pulling in expo-sharing, which we can wire later if needed.
+ */
+function downloadInsightMarkdown(insight: MeetingInsight) {
+  if (Platform.OS !== "web" || typeof document === "undefined") return;
+  const report = insight.fullReport && insight.fullReport.trim().length > 0
+    ? insight.fullReport
+    : buildFallbackMarkdown(insight);
+  const blob = new Blob([report], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const ts = insight.generatedAt
+    ? new Date(insight.generatedAt).toISOString().slice(0, 19).replace(/[:T]/g, "-")
+    : new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  a.download = `meeting-insight-${ts}-v${insight.version}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Free the blob URL on the next tick — browsers keep the download
+  // alive long enough.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+/**
+ * Last-resort markdown builder when `fullReport` is empty but the
+ * structured sections are populated. Stitches the JSON sections into a
+ * readable doc so the download is never empty.
+ */
+function buildFallbackMarkdown(insight: MeetingInsight): string {
+  const lines: string[] = [
+    `# Meeting Insight Report (v${insight.version})`,
+    "",
+    insight.generatedAt ? `_Generated ${new Date(insight.generatedAt).toLocaleString()}_` : "",
+    "",
+  ];
+  const push = (title: string, raw: string | null) => {
+    if (!raw) return;
+    const obj = safeJson(raw);
+    if (!obj) return;
+    lines.push(`## ${title}`, "", "```json", JSON.stringify(obj, null, 2), "```", "");
+  };
+  push("Skills Assessment", insight.skillsAssessment);
+  push("Communication Analysis", insight.communicationAnalysis);
+  push("Key Topics", insight.keyTopicsSummary);
+  push("Red Flags & Concerns", insight.redFlagsAndConcerns);
+  return lines.join("\n");
 }
