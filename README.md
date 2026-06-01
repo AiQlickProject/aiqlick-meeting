@@ -81,11 +81,11 @@ on push to `main`.
 
 `main` is the production deployment branch for the web client served
 through the existing meeting infrastructure. To publish the current
-dev app to `book.aiqlick.com`, move or merge `main` to the wanted
+dev app to `meet.aiqlick.com`, move or merge `main` to the wanted
 `dev` revision, then push `main`; the ECR workflow handles the build
 and EC2 restart.
 
-The app's Jitsi target remains `book.aiqlick.com` in `app.json` /
+The app's Jitsi target remains `meet.aiqlick.com` in `app.json` /
 `eas.json`, so the deployed client embeds the same Jitsi backend while
 replacing the web UI from `main`.
 

@@ -9,7 +9,7 @@ The web target is deployed from `main` through
 `.github/workflows/ecr-deploy.yml`: GitHub Actions builds the Expo
 static export into an nginx Docker image, pushes it to ECR, then
 restarts the EC2 `web` container through SSM. The active production
-client embeds the Jitsi backend at `book.aiqlick.com`.
+client embeds the Jitsi backend at `meet.aiqlick.com`.
 
 The lightweight CI path is `.github/workflows/ci.yml`, which runs on
 pull requests and pushes to `main` / `dev`. It installs with `npm ci`,
@@ -157,10 +157,10 @@ environments (local, dev, prod) we need per-profile overrides via
       "extra": { "apiUrl": "http://localhost:3000", "jitsiDomain": "..." }
     },
     "preview": {
-      "extra": { "apiUrl": "https://api-dev.aiqlick.com", "jitsiDomain": "book.aiqlick.com" }
+      "extra": { "apiUrl": "https://api-dev.aiqlick.com", "jitsiDomain": "meet.aiqlick.com" }
     },
     "production": {
-      "extra": { "apiUrl": "https://api.aiqlick.com", "jitsiDomain": "book.aiqlick.com" }
+      "extra": { "apiUrl": "https://api.aiqlick.com", "jitsiDomain": "meet.aiqlick.com" }
     }
   }
 }
