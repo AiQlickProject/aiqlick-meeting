@@ -13,6 +13,7 @@ import { ScrollView, View, XStack, YStack, Text } from "tamagui";
 
 import AuthGuard from "@/components/AuthGuard";
 import ProfileSwitcher from "@/components/ProfileSwitcher";
+import { useUserAuth } from "@/contexts/UserAuthProvider";
 import CalendarItemCard from "@/components/meetings/CalendarItemCard";
 import CreateMeetingModal from "@/components/meetings/CreateMeetingModal";
 import MeetingsCalendar from "@/components/meetings/MeetingsCalendar";
@@ -20,11 +21,13 @@ import { TWButton } from "@/components/ux/TWButton";
 import { TWInput } from "@/components/ux/TWInput";
 import { TWSelect } from "@/components/ux/TWSelect";
 import {
-  GET_MY_CALENDAR,
-  GET_UPCOMING_EVENTS,
+  GET_MY_MEETINGS,
+  GET_MY_INTERVIEWS,
+  interviewToCalendarEvent,
+  meetingToCalendarEvent,
   type CalendarEvent,
-  type MyCalendarResult,
-  type UpcomingEventsResult,
+  type MyInterviewsResult,
+  type MyMeetingsResult,
 } from "@/graphql/operations/meetings";
 import {
   GET_MY_MEETING_LINK,
@@ -63,6 +66,7 @@ export default function HomeIndex() {
 function Dashboard() {
   const router = useRouter();
   const apollo = useApolloClient();
+  const { user } = useUserAuth();
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -118,32 +122,45 @@ function Dashboard() {
     }
   };
 
-  const { data: upcomingData, loading: upcomingLoading, error: upcomingError } =
-    useQuery<UpcomingEventsResult>(GET_UPCOMING_EVENTS, {
-      variables: { input: { limit: 50 } },
+  const { data: meetingsData, loading: meetingsLoading, error: meetingsError } =
+    useQuery<MyMeetingsResult>(GET_MY_MEETINGS, {
+      // No filter — backend returns all meetings where the user is
+      // organizer or attendee, excluding CANCELLED.
+      variables: { input: {} },
       fetchPolicy: "cache-and-network",
     });
 
-  const pastRange = useMemo(() => {
-    const to = new Date();
-    const from = new Date();
-    from.setDate(from.getDate() - 90);
-    return { from: from.toISOString(), to: to.toISOString() };
-  }, []);
-
-  const { data: pastData } = useQuery<MyCalendarResult>(GET_MY_CALENDAR, {
-    variables: { input: pastRange },
-    fetchPolicy: "cache-and-network",
-  });
+  const { data: interviewsData } = useQuery<MyInterviewsResult>(
+    GET_MY_INTERVIEWS,
+    {
+      variables: { input: { first: 50 } },
+      fetchPolicy: "cache-and-network",
+    },
+  );
 
   const allEvents = useMemo(() => {
-    const up = upcomingData?.upcomingEvents ?? [];
-    const past = pastData?.myCalendar.events ?? [];
-    const byId = new Map<string, CalendarEvent>();
-    for (const e of past) byId.set(e.id, e);
-    for (const e of up) byId.set(e.id, e);
-    return Array.from(byId.values());
-  }, [upcomingData, pastData]);
+    const meetings = meetingsData?.myMeetings ?? [];
+    const interviewEdges = interviewsData?.myInterviews.edges ?? [];
+
+    const meetingEvents = meetings.map((m) => meetingToCalendarEvent(m, user));
+    const interviewEvents = interviewEdges.map((e) =>
+      interviewToCalendarEvent(e.node, user),
+    );
+
+    // Dedupe — a `myInterviews` row has a linked `meeting.id`, and the
+    // same meeting also shows up in `myMeetings` (with
+    // `interviewBookingId` set, type=INTERVIEW). Prefer the richer
+    // interview row because it carries candidate + job context.
+    const byKey = new Map<string, CalendarEvent>();
+    for (const e of meetingEvents) byKey.set(e.id, e);
+    for (const e of interviewEvents) {
+      byKey.set(e.id, e);
+      // Drop any meetings-derived INTERVIEW row for the same meetingId
+      // so we don't show duplicates with thinner data.
+      if (e.meetingId) byKey.delete(`meeting-${e.meetingId}`);
+    }
+    return Array.from(byKey.values());
+  }, [meetingsData, interviewsData, user]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -332,8 +349,8 @@ function Dashboard() {
           {viewMode === "list" ? (
             <ListView
               events={sorted}
-              loading={upcomingLoading && !upcomingData}
-              error={upcomingError?.message}
+              loading={meetingsLoading && !meetingsData}
+              error={meetingsError?.message}
               joiningId={joiningId}
               onOpenDetails={(e) => {
                 // `e.id` is a composite (e.g. `meeting-<uuid>` /

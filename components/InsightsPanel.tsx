@@ -38,6 +38,11 @@ interface Props {
   onClose: () => void;
 }
 
+interface ContentProps {
+  meetingId: string | null;
+  interviewId?: string | null;
+}
+
 // ─── Colour palette ──────────────────────────────────────────────────────────
 const C = {
   primary: "#7091E6",
@@ -723,12 +728,18 @@ function RedFlagsSection({ data }: { data: any }) {
   );
 }
 
-// ─── Main panel ───────────────────────────────────────────────────────────────
-export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose }: Props) {
+/**
+ * Headless body for the insight panel — owns the query + mutation +
+ * polling state machine and renders the per-status section content
+ * (empty / generating / failed / results). Used both by the in-call
+ * `InsightsPanel` (with side-panel chrome) and by the meeting detail
+ * page's AI Insights card (no chrome).
+ */
+export function InsightsContent({ meetingId, interviewId }: ContentProps) {
   const { data, refetch, loading, error, startPolling, stopPolling } =
     useQuery<GetLatestMeetingInsightResult>(GET_LATEST_MEETING_INSIGHT, {
       variables: { meetingId },
-      skip: !isOpen || !meetingId,
+      skip: !meetingId,
       fetchPolicy: "cache-and-network",
       errorPolicy: "ignore",
     });
@@ -740,16 +751,13 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
   const insight = data?.latestMeetingInsight ?? null;
   const status = insight?.status;
   const isServerGenerating = status === "PENDING" || status === "GENERATING" || status === "PROCESSING";
-  // Treat as generating if either locally pending OR server confirmed
   const isGenerating = pendingGenerate || isServerGenerating;
 
   useEffect(() => {
     if (isServerGenerating) {
-      // Backend confirmed generation — clear local flag and keep polling
       setPendingGenerate(false);
       startPolling(4000);
     } else if (!pendingGenerate) {
-      // Only stop polling if we are not in a local-pending state
       stopPolling();
     }
     return () => { stopPolling(); };
@@ -762,7 +770,6 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
 
   const onGenerate = async (forceRefresh: boolean = false) => {
     if (!meetingId) return;
-    // Immediately flag as pending — prevents useEffect from killing the poll
     setPendingGenerate(true);
     try {
       await initialize({
@@ -770,22 +777,58 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
           input: {
             meetingId,
             interviewId: interviewId ?? null,
-            // The backend enforces a 5-minute cool-down between
-            // generations per meeting. When the user explicitly hits
-            // "Regenerate" we pass forceRefresh so the request
-            // bypasses that gate and produces a new version.
             forceRefresh,
           },
         },
       });
-      // Kick off the first refetch; useEffect will handle continued polling
-      // once the backend confirms PENDING status
       startPolling(4000);
     } catch {
       setPendingGenerate(false);
     }
   };
   const onRegenerate = () => onGenerate(true);
+
+  return (
+    <YStack gap={10}>
+      {!meetingId && <MissingMeetingIdState />}
+
+      {meetingId && loading && !data && (
+        <YStack alignItems="center" paddingVertical={40}>
+          <ActivityIndicator color={C.primary} />
+        </YStack>
+      )}
+
+      {meetingId && error && !insight && !isGenerating && (
+        <ErrorState message={error.message} onRetry={() => void refetch()} />
+      )}
+
+      {meetingId && !loading && !insight && !isGenerating && (
+        <EmptyState onGenerate={() => onGenerate(false)} loading={initializing} />
+      )}
+
+      {meetingId && isGenerating && <GeneratingState />}
+
+      {meetingId && insight?.status === "FAILED" && (
+        <FailureState message={insight.errorMessage} onRetry={onRegenerate} retrying={initializing} />
+      )}
+
+      {meetingId && insight?.status === "COMPLETED" && (
+        <ResultsView insight={insight} onRegenerate={onRegenerate} regenerating={initializing} />
+      )}
+    </YStack>
+  );
+}
+
+// ─── Main panel (side-panel chrome wrapping InsightsContent) ─────────────────
+export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose }: Props) {
+  // Read the latest insight separately so the chrome can show the version
+  // chip without forcing InsightsContent to lift its `insight` state.
+  const { data } = useQuery<GetLatestMeetingInsightResult>(GET_LATEST_MEETING_INSIGHT, {
+    variables: { meetingId },
+    skip: !isOpen || !meetingId,
+    fetchPolicy: "cache-only",
+  });
+  const insight = data?.latestMeetingInsight ?? null;
 
   if (!isOpen) return null;
 
@@ -843,31 +886,7 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
       </XStack>
 
       <ScrollView flex={1} contentContainerStyle={{ padding: 14, gap: 10 }}>
-        {!meetingId && <MissingMeetingIdState />}
-
-        {meetingId && loading && !data && (
-          <YStack alignItems="center" paddingVertical={40}>
-            <ActivityIndicator color={C.primary} />
-          </YStack>
-        )}
-
-        {meetingId && error && !insight && !isGenerating && (
-          <ErrorState message={error.message} onRetry={() => void refetch()} />
-        )}
-
-        {meetingId && !loading && !insight && !isGenerating && (
-          <EmptyState onGenerate={() => onGenerate(false)} loading={initializing} />
-        )}
-
-        {meetingId && isGenerating && <GeneratingState />}
-
-        {meetingId && insight?.status === "FAILED" && (
-          <FailureState message={insight.errorMessage} onRetry={onRegenerate} retrying={initializing} />
-        )}
-
-        {meetingId && insight?.status === "COMPLETED" && (
-          <ResultsView insight={insight} onRegenerate={onRegenerate} regenerating={initializing} />
-        )}
+        <InsightsContent meetingId={meetingId} interviewId={interviewId} />
       </ScrollView>
     </YStack>
   );
