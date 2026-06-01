@@ -1,7 +1,6 @@
 import { useApolloClient, useQuery } from "@apollo/client";
 import {
   ArrowLeft,
-  Briefcase,
   Calendar as CalendarIcon,
   CheckCircle2,
   Clock,
@@ -18,6 +17,7 @@ import { ActivityIndicator, Platform } from "react-native";
 import { ScrollView, View, XStack, YStack, Text } from "tamagui";
 
 import AuthGuard from "@/components/AuthGuard";
+import { InsightsContent } from "@/components/InsightsPanel";
 import { useUserAuth } from "@/contexts/UserAuthProvider";
 import { TWAvatar } from "@/components/ux/TWAvatar";
 import { TWButton } from "@/components/ux/TWButton";
@@ -161,7 +161,10 @@ function Inner() {
                   </View>
                 </XStack>
                 <AttendeesCard meeting={meeting} isOrganizer={isOrganizer} />
-                <InsightsSection />
+                <InsightsSection
+                  meetingId={meeting.id}
+                  interviewId={meeting.interviewBookingId}
+                />
                 <TranscriptionSection />
               </>
             );
@@ -475,7 +478,13 @@ function AttendeesCard({
   );
 }
 
-function InsightsSection() {
+function InsightsSection({
+  meetingId,
+  interviewId,
+}: {
+  meetingId: string;
+  interviewId: string | null;
+}) {
   return (
     <TWCard shadow="sm">
       <TWCardHeader>
@@ -485,29 +494,7 @@ function InsightsSection() {
       </TWCardHeader>
       <TWDivider />
       <TWCardBody>
-        <YStack alignItems="center" paddingVertical={20} gap={8}>
-          <View
-            width={48}
-            height={48}
-            borderRadius={9999}
-            backgroundColor={aiqlickTokens.primaryFaint}
-            alignItems="center"
-            justifyContent="center"
-          >
-            <Briefcase size={22} color={aiqlickTokens.primary} />
-          </View>
-          <Text color={aiqlickTokens.gray700} fontSize={13} fontWeight="600">
-            Generate insights from this meeting
-          </Text>
-          <Text
-            color={aiqlickTokens.gray500}
-            fontSize={11}
-            textAlign="center"
-            maxWidth={420}
-          >
-            After the meeting ends, run an AI summary covering skills, communication, key topics, and red flags. Lands in an upcoming milestone.
-          </Text>
-        </YStack>
+        <InsightsContent meetingId={meetingId} interviewId={interviewId} />
       </TWCardBody>
     </TWCard>
   );
