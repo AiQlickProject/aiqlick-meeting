@@ -822,7 +822,10 @@ function InsightsContentInner({ meetingId, interviewId }: { meetingId: string | 
       variables: { meetingId },
       skip: !meetingId,
       fetchPolicy: "cache-and-network",
-      errorPolicy: "ignore",
+      // `all` so GraphQL errors surface on `error` and the ErrorState
+      // renders them via <ErrorDisplay>. `ignore` silently dropped them
+      // and made failures look like normal "no data" empty states.
+      errorPolicy: "all",
     });
 
   // Full version history — backs the version switcher in ResultsView.
@@ -833,7 +836,10 @@ function InsightsContentInner({ meetingId, interviewId }: { meetingId: string | 
       variables: { meetingId },
       skip: !meetingId,
       fetchPolicy: "cache-and-network",
-      errorPolicy: "ignore",
+      // `all` so GraphQL errors surface on `error` and the ErrorState
+      // renders them via <ErrorDisplay>. `ignore` silently dropped them
+      // and made failures look like normal "no data" empty states.
+      errorPolicy: "all",
     });
 
   // Local flag so the UI transitions to "Generating" immediately on button

@@ -539,7 +539,12 @@ function TranscriptionSection({
       // in without a manual refresh. 30s is light, and Apollo
       // de-dupes if the previous request hasn't returned.
       pollInterval: 30000,
-      errorPolicy: "ignore",
+      // `all` so GraphQL errors land on `error` AND any partial `data`
+      // still renders. Previously this was `ignore`, which silently
+      // dropped the error field — the panel showed a "No transcript
+      // yet" empty state even when the backend was returning a 403,
+      // hiding the structured error we want users to see.
+      errorPolicy: "all",
     },
   );
 
