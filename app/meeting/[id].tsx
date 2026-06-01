@@ -172,6 +172,14 @@ function Inner() {
                 <InsightsSection
                   meetingId={meeting.id}
                   interviewId={meeting.interviewBookingId}
+                  roomName={meeting.roomName}
+                  organizerName={
+                    meeting.organizer
+                      ? `${meeting.organizer.firstName ?? ""} ${
+                          meeting.organizer.lastName ?? ""
+                        }`.trim() || null
+                      : null
+                  }
                 />
                 <TranscriptionSection
                   meetingId={meeting.id}
@@ -492,9 +500,13 @@ function AttendeesCard({
 function InsightsSection({
   meetingId,
   interviewId,
+  roomName,
+  organizerName,
 }: {
   meetingId: string;
   interviewId: string | null;
+  roomName: string | null;
+  organizerName: string | null;
 }) {
   return (
     <TWCard shadow="sm">
@@ -509,6 +521,8 @@ function InsightsSection({
           meetingId={meetingId}
           interviewId={interviewId}
           theme="light"
+          roomName={roomName}
+          organizerName={organizerName}
         />
       </TWCardBody>
     </TWCard>

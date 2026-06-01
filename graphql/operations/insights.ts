@@ -24,6 +24,7 @@ export const GET_LATEST_MEETING_INSIGHT = gql`
       redFlagsAndConcerns
       generatedAt
       transcriptLength
+      transcriptRange
       llmModel
       llmTokensUsed
       processingTimeMs
@@ -52,6 +53,7 @@ export const GET_MEETING_INSIGHTS_HISTORY = gql`
       redFlagsAndConcerns
       generatedAt
       transcriptLength
+      transcriptRange
       llmModel
       llmTokensUsed
       processingTimeMs
@@ -93,6 +95,14 @@ export interface MeetingInsight {
   redFlagsAndConcerns: string | null;
   generatedAt: string | null;
   transcriptLength: number | null;
+  /**
+   * The time window of transcript that this insight analysed. The
+   * backend exposes this as a JSON column (`{ startTime, endTime }`),
+   * populated by the bg-tasks pipeline. Until handoff #02 lands it
+   * stays null — but the field is in the selection set so the UI
+   * lights up automatically once it's populated.
+   */
+  transcriptRange: { startTime?: string | null; endTime?: string | null } | null;
   llmModel: string | null;
   llmTokensUsed: number | null;
   processingTimeMs: number | null;

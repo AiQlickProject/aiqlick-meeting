@@ -4,6 +4,8 @@ import { XStack, YStack } from "tamagui";
 
 import ChatPanel from "@/components/ChatPanel";
 import InsightsPanel from "@/components/InsightsPanel";
+import { MeetingConsentBanner } from "@/components/MeetingConsentBanner";
+import { MeetingConsentModal } from "@/components/MeetingConsentModal";
 import ParticipantsPanel from "@/components/ParticipantsPanel";
 import ReactionsOverlay from "@/components/ReactionsOverlay";
 import TranscriptPanel from "@/components/TranscriptPanel";
@@ -12,6 +14,7 @@ import MeetingHeader from "@/components/MeetingHeader";
 import MeetingToolbar from "@/components/MeetingToolbar";
 import JitsiEmbed from "@/components/JitsiEmbed";
 import { useJitsi } from "@/hooks/useJitsi";
+import { useMeetingConsent } from "@/lib/hooks/useMeetingConsent";
 import {
   decodeJwtDisplayName,
   decodeJwtIsModerator,
@@ -89,6 +92,17 @@ export default function MeetingRoute() {
     commands.hangup();
     router.replace("/");
   }, [commands, router]);
+
+  // AI transcription consent gate. Participants are shown a notice
+  // on join: agree → mic enabled; decline → force-muted with a
+  // banner offering "Change my mind". State persisted per room so
+  // re-joining within the same browser session doesn't re-prompt.
+  const consent = useMeetingConsent({
+    roomName: room ?? null,
+    isJoined: state.isJoined,
+    isAudioMuted: state.isAudioMuted,
+    toggleAudio: commands.toggleAudio,
+  });
 
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
@@ -198,7 +212,14 @@ export default function MeetingRoute() {
             bottom={0}
             paddingBottom="$3"
             pointerEvents="box-none"
+            gap={8}
           >
+            {/* Sits above the toolbar so it's always visible. The
+                banner only renders for users who explicitly declined
+                AI transcription — see useMeetingConsent. */}
+            {consent.status === "declined" && (
+              <MeetingConsentBanner onReopen={consent.reopenPrompt} />
+            )}
             <MeetingToolbar
               state={state}
               onToggleAudio={commands.toggleAudio}
@@ -261,6 +282,16 @@ export default function MeetingRoute() {
           </YStack>
         )}
       </XStack>
+
+      {/* Consent gate — rendered at the root so it overlays the
+          whole meeting view. Non-dismissable; participant must
+          choose agree or stay-muted before they can interact with
+          the meeting room normally. */}
+      <MeetingConsentModal
+        isOpen={consent.showModal}
+        onAgree={() => void consent.setConsent(true)}
+        onDecline={() => void consent.setConsent(false)}
+      />
     </YStack>
   );
 }

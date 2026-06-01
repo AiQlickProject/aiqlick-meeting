@@ -19,7 +19,9 @@ import { Platform } from "react-native";
 import { ActivityIndicator, Pressable } from "react-native";
 import { ScrollView, View, XStack, YStack, Text } from "tamagui";
 
+import { BillingBlock } from "@/components/BillingBlock";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { RegenerateConfirmModal } from "@/components/RegenerateConfirmModal";
 import { TWButton } from "@/components/ux/TWButton";
 import { TWChip } from "@/components/ux/TWChip";
 import {
@@ -31,6 +33,14 @@ import {
   type InitializeMeetingInsightResult,
   type MeetingInsight,
 } from "@/graphql/operations/insights";
+import {
+  GET_MEETING_TRANSCRIPT,
+  type GetMeetingTranscriptResult,
+} from "@/graphql/operations/transcript";
+import { useCreditBalance } from "@/lib/hooks/useCreditBalance";
+import { useLastInsightCost } from "@/lib/hooks/useLastInsightCost";
+import { detectBillingError, type BillingErrorInfo } from "@/lib/billing/billingError";
+import { formatCredits } from "@/lib/billing/estimateInsightCost";
 
 type Theme = "dark" | "light";
 
@@ -51,6 +61,19 @@ interface ContentProps {
    * page) so the text and surfaces have enough contrast.
    */
   theme?: Theme;
+  /**
+   * Jitsi room name. Used as the lookup key for the current
+   * transcript text so the cost estimator can size the bill from
+   * live char count, not stale `insight.transcriptLength`. When
+   * omitted (e.g., the in-call side panel which doesn't have it
+   * handy), the estimator falls back to the latest insight's
+   * reported transcript length.
+   */
+  roomName?: string | null;
+  /** Display name of the meeting organizer. Surfaced in the
+   * regenerate-confirm modal's "host is not billed" line so the
+   * disclosure is concrete instead of generic. */
+  organizerName?: string | null;
 }
 
 // ─── Palettes ────────────────────────────────────────────────────────────────
@@ -806,16 +829,37 @@ function RedFlagsSection({ data }: { data: any }) {
  * Provides the palette context for everything it renders so all
  * descendants pick up the right light/dark variant automatically.
  */
-export function InsightsContent({ meetingId, interviewId, theme = "dark" }: ContentProps) {
+export function InsightsContent({
+  meetingId,
+  interviewId,
+  theme = "dark",
+  roomName,
+  organizerName,
+}: ContentProps) {
   const palette = theme === "light" ? LIGHT_PALETTE : DARK_PALETTE;
   return (
     <PaletteContext.Provider value={palette}>
-      <InsightsContentInner meetingId={meetingId} interviewId={interviewId} />
+      <InsightsContentInner
+        meetingId={meetingId}
+        interviewId={interviewId}
+        roomName={roomName}
+        organizerName={organizerName}
+      />
     </PaletteContext.Provider>
   );
 }
 
-function InsightsContentInner({ meetingId, interviewId }: { meetingId: string | null; interviewId?: string | null }) {
+function InsightsContentInner({
+  meetingId,
+  interviewId,
+  roomName,
+  organizerName,
+}: {
+  meetingId: string | null;
+  interviewId?: string | null;
+  roomName?: string | null;
+  organizerName?: string | null;
+}) {
   const C = usePalette();
   const { data, refetch, loading, error, startPolling, stopPolling } =
     useQuery<GetLatestMeetingInsightResult>(GET_LATEST_MEETING_INSIGHT, {
@@ -842,6 +886,23 @@ function InsightsContentInner({ meetingId, interviewId }: { meetingId: string | 
       errorPolicy: "all",
     });
 
+  // Live transcript size — used to size the cost estimate in the
+  // confirm modal. Same `transcriptText` query the TranscriptionSection
+  // uses; Apollo's cache deduplicates so the two requests collapse
+  // into one network round-trip on the detail page. `cache-first` so
+  // we don't trigger an extra fetch just to get the estimate.
+  const { data: transcriptData } = useQuery<GetMeetingTranscriptResult>(
+    GET_MEETING_TRANSCRIPT,
+    {
+      variables: { meetingId: roomName },
+      skip: !roomName,
+      fetchPolicy: "cache-first",
+      errorPolicy: "ignore",
+    },
+  );
+  const currentTranscriptChars =
+    transcriptData?.transcriptText?.transcript?.length ?? null;
+
   // Local flag so the UI transitions to "Generating" immediately on button
   // press, before the next poll confirms PENDING status from the backend.
   const [pendingGenerate, setPendingGenerate] = useState(false);
@@ -866,9 +927,20 @@ function InsightsContentInner({ meetingId, interviewId }: { meetingId: string | 
     INITIALIZE_MEETING_INSIGHT,
   );
 
+  // Captures errors from the `initializeMeetingInsight` mutation.
+  // Most useful for billing failures (INSUFFICIENT_CREDITS,
+  // SUBSCRIPTION_INACTIVE) which arrive synchronously before the
+  // subscription event stream begins — so they never appear on the
+  // insight row itself. We render a BillingBlock at the top of the
+  // panel until the user retries or buys credits.
+  const [billingBlock, setBillingBlock] = useState<BillingErrorInfo | null>(null);
+  const [genericMutationError, setGenericMutationError] = useState<Error | null>(null);
+
   const onGenerate = async (forceRefresh: boolean = false) => {
     if (!meetingId) return;
     setPendingGenerate(true);
+    setBillingBlock(null);
+    setGenericMutationError(null);
     try {
       await initialize({
         variables: {
@@ -883,11 +955,39 @@ function InsightsContentInner({ meetingId, interviewId }: { meetingId: string | 
       // Pull the freshly-created GENERATING row into the version list
       // so the switcher reflects the new pending version immediately.
       void refetchHistory();
-    } catch {
+    } catch (err) {
       setPendingGenerate(false);
+      // Decode the error: billing failures get the dedicated
+      // BillingBlock with a buy/renew CTA; anything else falls
+      // through to a generic ErrorDisplay.
+      const decoded = detectBillingError(err as Error);
+      if (decoded) {
+        setBillingBlock(decoded);
+      } else {
+        setGenericMutationError(err as Error);
+      }
     }
   };
-  const onRegenerate = () => onGenerate(true);
+
+  // Confirm-before-charge flow. Every Generate / Regenerate click
+  // opens the modal so the user sees the cost, balance, and "you're
+  // billed, not the host" disclosure before the mutation fires.
+  // We track whether the pending intent is a first-time generate or
+  // a forced refresh (regenerate) so the modal can word things
+  // correctly and the underlying call uses the right cooldown bypass.
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingForceRefresh, setPendingForceRefresh] = useState(false);
+
+  const requestGenerate = (forceRefresh: boolean) => {
+    if (!meetingId) return;
+    setPendingForceRefresh(forceRefresh);
+    setConfirmOpen(true);
+  };
+  const onConfirmGenerate = async () => {
+    setConfirmOpen(false);
+    await onGenerate(pendingForceRefresh);
+  };
+  const onRegenerate = () => requestGenerate(true);
 
   // When polling finishes (status flips to COMPLETED/FAILED), refresh
   // history so the new version's full content lands in the switcher.
@@ -901,6 +1001,20 @@ function InsightsContentInner({ meetingId, interviewId }: { meetingId: string | 
     <YStack gap={10}>
       {!meetingId && <MissingMeetingIdState />}
 
+      {/* Mutation-level errors (most useful for billing failures
+          that come back from `initializeMeetingInsight` before the
+          subscription stream even starts). */}
+      {billingBlock && (
+        <BillingBlock
+          info={billingBlock}
+          onRetry={() => void onGenerate(true)}
+          retrying={initializing}
+        />
+      )}
+      {!billingBlock && genericMutationError && (
+        <ErrorDisplay error={genericMutationError} title="Couldn't start generation" />
+      )}
+
       {meetingId && loading && !data && (
         <YStack alignItems="center" paddingVertical={40}>
           <ActivityIndicator color={C.primary} />
@@ -912,7 +1026,10 @@ function InsightsContentInner({ meetingId, interviewId }: { meetingId: string | 
       )}
 
       {meetingId && !loading && !insight && !isGenerating && (
-        <EmptyState onGenerate={() => onGenerate(false)} loading={initializing} />
+        <EmptyState
+          onGenerate={() => requestGenerate(false)}
+          loading={initializing}
+        />
       )}
 
       {meetingId && isGenerating && <GeneratingState />}
@@ -927,8 +1044,24 @@ function InsightsContentInner({ meetingId, interviewId }: { meetingId: string | 
           history={historyData?.meetingInsights ?? []}
           onRegenerate={onRegenerate}
           regenerating={initializing}
+          meetingId={meetingId}
+          currentTranscriptChars={currentTranscriptChars}
         />
       )}
+
+      <RegenerateConfirmModal
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={onConfirmGenerate}
+        currentVersion={insight?.version ?? null}
+        // Prefer the freshly-loaded transcript char count; fall back
+        // to the last insight's reported transcriptLength when the
+        // surrounding surface didn't pass roomName (e.g., in-call
+        // panel) so the estimate is at least a reasonable lower bound.
+        transcriptChars={currentTranscriptChars ?? insight?.transcriptLength ?? null}
+        submitting={initializing}
+        organizerName={organizerName ?? null}
+      />
     </YStack>
   );
 }
@@ -1089,6 +1222,14 @@ function GeneratingState() {
 
 function FailureState({ message, onRetry, retrying }: { message: string | null; onRetry: () => void; retrying: boolean }) {
   const C = usePalette();
+  // The errorMessage column is a string (no structured extension
+  // shape). detectBillingError still handles strings via its message
+  // pattern matcher, so a failed generation that's secretly an
+  // INSUFFICIENT_CREDITS gets the right CTA instead of just "Try again".
+  const billing = detectBillingError(message);
+  if (billing) {
+    return <BillingBlock info={billing} onRetry={onRetry} retrying={retrying} />;
+  }
   return (
     <YStack gap={12}>
       <YStack padding={12} gap={6} borderRadius={10} backgroundColor={C.redDim} borderWidth={1} borderColor={C.redBorder}>
@@ -1118,11 +1259,21 @@ function ResultsView({
   history,
   onRegenerate,
   regenerating,
+  meetingId,
+  currentTranscriptChars,
 }: {
   insight: MeetingInsight;
   history: MeetingInsight[];
   onRegenerate: () => void;
+  meetingId: string | null;
   regenerating: boolean;
+  /**
+   * Live transcript char count — when present and materially larger
+   * than the displayed insight's `transcriptLength`, we surface a
+   * "transcript has grown" banner so users on recurring meetings
+   * notice they're looking at a stale analysis.
+   */
+  currentTranscriptChars: number | null;
 }) {
   const C = usePalette();
 
@@ -1149,8 +1300,64 @@ function ResultsView({
   const keyTopicsSummary = safeJson(displayed.keyTopicsSummary);
   const redFlagsAndConcerns = safeJson(displayed.redFlagsAndConcerns);
 
+  // Balance + last-cost chips for the meta row. Both are best-effort:
+  // if either query is loading or fails, we just don't render the
+  // chip rather than show "—" placeholders.
+  const { balance } = useCreditBalance();
+  const { log: lastCostLog } = useLastInsightCost(meetingId);
+
+  // "Transcript has grown" — recurring meetings (same Jitsi room
+  // rejoined daily) keep accumulating transcript. The displayed
+  // insight's `transcriptLength` is whatever was analysed when it
+  // ran. If the live transcript is materially larger we surface a
+  // banner pointing at Regenerate. Threshold: 1000 extra chars OR
+  // a 10% increase, whichever is smaller — so trivial drift doesn't
+  // nag the user but a new session lights up.
+  const insightChars = displayed.transcriptLength ?? 0;
+  const transcriptGrowth =
+    currentTranscriptChars != null && insightChars > 0
+      ? currentTranscriptChars - insightChars
+      : 0;
+  const transcriptGrew =
+    transcriptGrowth >= Math.min(1000, Math.max(100, insightChars * 0.1));
+
+  // Format the analysed window from `transcriptRange` (when bg-tasks
+  // ships handoff #02 it'll start being populated; until then this
+  // chip silently doesn't render).
+  const rangeChip = (() => {
+    const range = displayed.transcriptRange;
+    if (!range?.startTime || !range?.endTime) return null;
+    try {
+      const s = new Date(range.startTime);
+      const e = new Date(range.endTime);
+      return `Analyzed: ${s.toLocaleTimeString([], {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })} → ${e.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    } catch {
+      return null;
+    }
+  })();
+
   return (
     <YStack gap={10}>
+      {/* "Transcript grew" — visible when the live transcript is
+          materially larger than what this insight analysed. The user
+          on a daily standup needs this hint because regenerating
+          picks up the entire history; without the banner they'd
+          assume the displayed insight covers today's session. */}
+      {isLatest && transcriptGrew && (
+        <TranscriptGrewHint
+          insightChars={insightChars}
+          currentChars={currentTranscriptChars ?? 0}
+          version={displayed.version}
+          onRegenerate={onRegenerate}
+          regenerating={regenerating}
+        />
+      )}
+
       {/* Version switcher — only shown when more than one COMPLETED
           version exists. Lets the user flip between regenerations and
           download whichever one is richest. */}
@@ -1179,10 +1386,29 @@ function ResultsView({
               label={`${displayed.transcriptLength.toLocaleString()} chars`}
             />
           )}
+          {rangeChip && (
+            <MetaChip
+              icon={<Clock size={10} color={C.textMuted} />}
+              label={rangeChip}
+            />
+          )}
           {!isLatest && (
             <MetaChip
               icon={<RefreshCw size={10} color={C.textMuted} />}
               label="Viewing older version"
+            />
+          )}
+          {/* Balance + last-cost — best effort, hidden when null. */}
+          {balance && (
+            <MetaChip
+              icon={<Sparkles size={10} color={C.textMuted} />}
+              label={`Balance: ${formatCredits(balance.balance)}`}
+            />
+          )}
+          {lastCostLog && (
+            <MetaChip
+              icon={<Sparkles size={10} color={C.textMuted} />}
+              label={`Last cost: ${formatCredits(lastCostLog.creditsCost)}`}
             />
           )}
         </XStack>
@@ -1228,6 +1454,72 @@ function ResultsView({
  * the currently-active pill is a no-op handled at the parent level
  * (treated as a select on the latest → unpins to null).
  */
+/**
+ * Banner for recurring meetings: when the live transcript is bigger
+ * than what the displayed insight analysed, nudge the user to
+ * regenerate so the analysis includes the new content. Specifically
+ * helpful for daily-standup type rooms where the same Jitsi
+ * room is rejoined over days and the saved insight gets stale.
+ *
+ * Wording is honest about the backend's current behaviour —
+ * regenerate analyses the *entire accumulated* transcript, not just
+ * the new portion. Per-session filtering is part of handoff #02.
+ */
+function TranscriptGrewHint({
+  insightChars,
+  currentChars,
+  version,
+  onRegenerate,
+  regenerating,
+}: {
+  insightChars: number;
+  currentChars: number;
+  version: number;
+  onRegenerate: () => void;
+  regenerating: boolean;
+}) {
+  const C = usePalette();
+  const added = currentChars - insightChars;
+  return (
+    <YStack
+      padding={12}
+      gap={10}
+      borderRadius={10}
+      backgroundColor={C.yellowDim}
+      borderWidth={1}
+      borderColor={C.yellowBorder}
+    >
+      <XStack gap={8} alignItems="flex-start">
+        <View paddingTop={2}>
+          <RefreshCw size={14} color={C.yellow} />
+        </View>
+        <YStack flex={1} gap={3}>
+          <Text color={C.textPrimary} fontSize={12} fontWeight="700">
+            Transcript has grown since v{version}
+          </Text>
+          <Text color={C.textSecondary} fontSize={11} lineHeight={16}>
+            {insightChars.toLocaleString()} → {currentChars.toLocaleString()} chars
+            (+{added.toLocaleString()}). Regenerate to include the new content.
+            Note: the analysis covers the full accumulated transcript, not just
+            this latest session.
+          </Text>
+        </YStack>
+      </XStack>
+      <XStack>
+        <TWButton
+          label="Regenerate"
+          variant="flat"
+          color="primary"
+          size="sm"
+          icon={<RefreshCw size={12} color={C.primary} />}
+          isLoading={regenerating}
+          onPress={onRegenerate}
+        />
+      </XStack>
+    </YStack>
+  );
+}
+
 function VersionSwitcher({
   versions,
   activeId,
