@@ -90,4 +90,11 @@ export interface InitializeMeetingInsightResult {
 export interface GenerateMeetingInsightInput {
   meetingId: string;
   interviewId?: string | null;
+  /**
+   * Bypass the 5-min server-side cool-down so the user can re-trigger
+   * generation after fixing an issue. Without this the backend rejects
+   * with `A recent insight was generated less than 5 minutes ago`.
+   * The UI passes this when the user clicks "Regenerate".
+   */
+  forceRefresh?: boolean;
 }
