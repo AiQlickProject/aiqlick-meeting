@@ -4,9 +4,12 @@ import {
   Calendar as CalendarIcon,
   CheckCircle2,
   Clock,
+  Download,
+  FileText,
   Pencil,
   Link as LinkIcon,
   Mail,
+  RefreshCw,
   Trash2,
   User,
   Video,
@@ -17,7 +20,8 @@ import { ActivityIndicator, Platform } from "react-native";
 import { ScrollView, View, XStack, YStack, Text } from "tamagui";
 
 import AuthGuard from "@/components/AuthGuard";
-import { InsightsContent } from "@/components/InsightsPanel";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { InsightsContent, printHtmlInIframe } from "@/components/InsightsPanel";
 import { useUserAuth } from "@/contexts/UserAuthProvider";
 import { TWAvatar } from "@/components/ux/TWAvatar";
 import { TWButton } from "@/components/ux/TWButton";
@@ -35,6 +39,10 @@ import {
   type MeetingDetail,
   type MeetingDetailResult,
 } from "@/graphql/operations/meetingDetail";
+import {
+  GET_MEETING_TRANSCRIPT,
+  type GetMeetingTranscriptResult,
+} from "@/graphql/operations/transcript";
 import { aiqlickTokens } from "@/tamagui.config";
 
 /**
@@ -165,7 +173,10 @@ function Inner() {
                   meetingId={meeting.id}
                   interviewId={meeting.interviewBookingId}
                 />
-                <TranscriptionSection />
+                <TranscriptionSection
+                  meetingId={meeting.id}
+                  roomName={meeting.roomName}
+                />
               </>
             );
           })()}
@@ -494,30 +505,242 @@ function InsightsSection({
       </TWCardHeader>
       <TWDivider />
       <TWCardBody>
-        <InsightsContent meetingId={meetingId} interviewId={interviewId} />
+        <InsightsContent
+          meetingId={meetingId}
+          interviewId={interviewId}
+          theme="light"
+        />
       </TWCardBody>
     </TWCard>
   );
 }
 
-function TranscriptionSection() {
+function TranscriptionSection({
+  meetingId,
+  roomName,
+}: {
+  meetingId: string;
+  roomName: string | null;
+}) {
+  // The backend's `transcriptText` resolver keys access off
+  // `interviewBooking.externalBookingId` matching the meetingId arg —
+  // it expects the Jitsi *room name*, not the Meeting UUID. Pass the
+  // room name when we have it; fall back to the UUID so the query
+  // still fires (and surfaces a clear error) if room name is null.
+  const transcriptKey = roomName ?? meetingId;
+  const { data, loading, error, refetch } = useQuery<GetMeetingTranscriptResult>(
+    GET_MEETING_TRANSCRIPT,
+    {
+      variables: { meetingId: transcriptKey },
+      skip: !transcriptKey,
+      fetchPolicy: "cache-and-network",
+      // Backend has no transcript subscription. Poll while the user
+      // is on this page so an in-progress meeting's transcript fills
+      // in without a manual refresh. 30s is light, and Apollo
+      // de-dupes if the previous request hasn't returned.
+      pollInterval: 30000,
+      errorPolicy: "ignore",
+    },
+  );
+
+  const transcript = data?.transcriptText?.transcript ?? "";
+  const segmentCount = data?.transcriptText?.segmentCount ?? 0;
+  const hasTranscript = transcript.trim().length > 0;
+  // The backend's access check is currently scoped to interview
+  // bookings only — general (non-interview) meetings return 403 even
+  // for the organizer. Detect that specific message so we can show a
+  // friendlier explanation than the raw exception text.
+  const isAccessError = !!error?.message?.toLowerCase().includes("do not have access");
+
   return (
     <TWCard shadow="sm">
       <TWCardHeader>
-        <Text color={aiqlickTokens.gray900} fontSize={14} fontWeight="700">
-          Transcription
-        </Text>
+        <XStack alignItems="center" justifyContent="space-between" flex={1} gap={12}>
+          <Text color={aiqlickTokens.gray900} fontSize={14} fontWeight="700">
+            Transcription
+          </Text>
+          {hasTranscript && (
+            <XStack alignItems="center" gap={8}>
+              <Text color={aiqlickTokens.gray500} fontSize={11}>
+                {segmentCount.toLocaleString()} segments · {transcript.length.toLocaleString()} chars
+              </Text>
+              <TWButton
+                label="Refresh"
+                variant="ghost"
+                color="default"
+                size="sm"
+                icon={<RefreshCw size={12} color={aiqlickTokens.gray700} />}
+                onPress={() => void refetch()}
+              />
+            </XStack>
+          )}
+        </XStack>
       </TWCardHeader>
       <TWDivider />
-      <TWCardBody>
-        <YStack alignItems="center" paddingVertical={20} gap={8}>
-          <Text color={aiqlickTokens.gray500} fontSize={12}>
-            Live transcription will appear here when the meeting starts.
-          </Text>
-        </YStack>
+      <TWCardBody gap={12}>
+        {loading && !data && (
+          <YStack alignItems="center" paddingVertical={20}>
+            <ActivityIndicator color={aiqlickTokens.primary} />
+          </YStack>
+        )}
+
+        {!loading && error && !hasTranscript && (
+          <ErrorDisplay
+            error={error}
+            title={isAccessError ? "Transcript access denied" : "Couldn't load transcript"}
+          />
+        )}
+
+        {!loading && !hasTranscript && !error && !isAccessError && (
+          <YStack alignItems="center" paddingVertical={24} gap={8}>
+            <View
+              width={44}
+              height={44}
+              borderRadius={9999}
+              backgroundColor={aiqlickTokens.gray100}
+              alignItems="center"
+              justifyContent="center"
+            >
+              <FileText size={20} color={aiqlickTokens.gray400} />
+            </View>
+            <Text color={aiqlickTokens.gray700} fontSize={13} fontWeight="600">
+              No transcript yet
+            </Text>
+            <Text
+              color={aiqlickTokens.gray500}
+              fontSize={11}
+              textAlign="center"
+              maxWidth={360}
+            >
+              The transcript builds up as people speak in the meeting. Refresh in a few minutes if a session is in progress.
+            </Text>
+          </YStack>
+        )}
+
+        {hasTranscript && (
+          <>
+            <XStack gap={8} flexWrap="wrap">
+              <TWButton
+                label="Download as text"
+                variant="flat"
+                color="primary"
+                size="sm"
+                icon={<Download size={12} color={aiqlickTokens.primary} />}
+                onPress={() => downloadTranscriptText(meetingId, transcript)}
+              />
+              <TWButton
+                label="Download as PDF"
+                variant="flat"
+                color="primary"
+                size="sm"
+                icon={<Download size={12} color={aiqlickTokens.primary} />}
+                onPress={() => downloadTranscriptPdf(meetingId, transcript)}
+              />
+            </XStack>
+            <View
+              borderRadius={8}
+              borderWidth={1}
+              borderColor={aiqlickTokens.gray200}
+              backgroundColor={aiqlickTokens.gray50}
+              padding={12}
+              // Scrollable container — the transcript can run thousands of
+              // lines long, so cap visible height and let it scroll within
+              // the card.
+              maxHeight={420}
+              overflow="scroll"
+            >
+              <Text
+                color={aiqlickTokens.gray900}
+                fontSize={12}
+                lineHeight={18}
+                fontFamily="$body"
+                // @ts-expect-error rn-web style passthrough for monospace + whitespace
+                style={{
+                  whiteSpace: "pre-wrap",
+                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+                  wordBreak: "break-word",
+                }}
+              >
+                {transcript}
+              </Text>
+            </View>
+          </>
+        )}
       </TWCardBody>
     </TWCard>
   );
+}
+
+/**
+ * Web-only: download the transcript as a plain text file. Native gets
+ * a no-op (we'll wire share-sheet via expo-sharing if/when needed).
+ */
+function downloadTranscriptText(meetingId: string, transcript: string) {
+  if (Platform.OS !== "web" || typeof document === "undefined") return;
+  const blob = new Blob([transcript], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  a.download = `meeting-transcript-${meetingId}-${ts}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+/**
+ * Web-only: render the transcript as styled HTML in a new window and
+ * trigger the browser's print dialog so the user can Save as PDF.
+ * Same pattern as the insight PDF download — zero deps.
+ */
+function downloadTranscriptPdf(meetingId: string, transcript: string) {
+  if (Platform.OS !== "web" || typeof document === "undefined") return;
+  const escapeHtml = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  const title = "Meeting Transcript";
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>${escapeHtml(title)}</title>
+<style>
+  @page { margin: 20mm 18mm; }
+  html, body { background: #fff; color: #0f172a; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    font-size: 11pt; line-height: 1.55;
+    max-width: 760px; margin: 0 auto; padding: 24px;
+  }
+  h1 { font-size: 20pt; margin: 0 0 6px; }
+  .meta { color: #64748b; font-size: 10pt; margin-bottom: 18px; }
+  pre {
+    white-space: pre-wrap; word-break: break-word;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10pt; line-height: 1.5;
+    margin: 0; padding: 0;
+  }
+  @media print {
+    body { padding: 0; }
+    pre { page-break-inside: auto; }
+  }
+</style>
+</head>
+<body>
+<h1>${escapeHtml(title)}</h1>
+<div class="meta">Meeting ${escapeHtml(meetingId)} · Generated ${escapeHtml(new Date().toLocaleString())}</div>
+<pre>${escapeHtml(transcript)}</pre>
+</body>
+</html>`;
+  // Same hidden-iframe flow as the insight PDF download. Avoids the
+  // about:blank window.open + document.write race that left the
+  // print dialog never firing.
+  printHtmlInIframe(html);
 }
 
 function Row({

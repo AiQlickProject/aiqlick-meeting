@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useMutation, useQuery } from "@apollo/client";
+import { createContext, useContext, useEffect, useState } from "react";
+import { useMutation, useQuery, type ApolloError } from "@apollo/client";
 import {
   Brain,
   Sparkles,
@@ -10,7 +10,6 @@ import {
   Lightbulb,
   ShieldAlert,
   Clock,
-  Cpu,
   FileText,
   Target,
   Users,
@@ -20,16 +19,20 @@ import { Platform } from "react-native";
 import { ActivityIndicator, Pressable } from "react-native";
 import { ScrollView, View, XStack, YStack, Text } from "tamagui";
 
+import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { TWButton } from "@/components/ux/TWButton";
 import { TWChip } from "@/components/ux/TWChip";
 import {
   GET_LATEST_MEETING_INSIGHT,
+  GET_MEETING_INSIGHTS_HISTORY,
   INITIALIZE_MEETING_INSIGHT,
   type GetLatestMeetingInsightResult,
+  type GetMeetingInsightsHistoryResult,
   type InitializeMeetingInsightResult,
   type MeetingInsight,
 } from "@/graphql/operations/insights";
-import { aiqlickTokens } from "@/tamagui.config";
+
+type Theme = "dark" | "light";
 
 interface Props {
   meetingId: string | null;
@@ -41,12 +44,45 @@ interface Props {
 interface ContentProps {
   meetingId: string | null;
   interviewId?: string | null;
+  /**
+   * Palette to render with. Default `dark` keeps the in-call side
+   * panel looking right against the meeting room's dark background.
+   * Pass `light` when embedding inside a white TWCard (meeting detail
+   * page) so the text and surfaces have enough contrast.
+   */
+  theme?: Theme;
 }
 
-// ─── Colour palette ──────────────────────────────────────────────────────────
-const C = {
+// ─── Palettes ────────────────────────────────────────────────────────────────
+interface Palette {
+  primary: string;
+  primaryDim: string;
+  primaryHoverDim: string;
+  primaryBorder: string;
+  surface: string;
+  surfaceHover: string;
+  border: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  green: string;
+  greenDim: string;
+  greenBorder: string;
+  yellow: string;
+  yellowDim: string;
+  yellowBorder: string;
+  red: string;
+  redDim: string;
+  redBorder: string;
+  blue: string;
+  blueDim: string;
+  blueBorder: string;
+}
+
+const DARK_PALETTE: Palette = {
   primary: "#7091E6",
   primaryDim: "rgba(112,145,230,0.15)",
+  primaryHoverDim: "rgba(112,145,230,0.28)",
   primaryBorder: "rgba(112,145,230,0.3)",
   surface: "rgba(255,255,255,0.04)",
   surfaceHover: "rgba(255,255,255,0.07)",
@@ -63,13 +99,38 @@ const C = {
   red: "#f87171",
   redDim: "rgba(248,113,113,0.12)",
   redBorder: "rgba(248,113,113,0.3)",
-  purple: "#a78bfa",
-  purpleDim: "rgba(167,139,250,0.12)",
-  purpleBorder: "rgba(167,139,250,0.3)",
   blue: "#60a5fa",
   blueDim: "rgba(96,165,250,0.12)",
   blueBorder: "rgba(96,165,250,0.3)",
 };
+
+const LIGHT_PALETTE: Palette = {
+  primary: "#4F6BBE",
+  primaryDim: "rgba(79,107,190,0.10)",
+  primaryHoverDim: "rgba(79,107,190,0.18)",
+  primaryBorder: "rgba(79,107,190,0.30)",
+  surface: "rgba(15,23,42,0.035)",
+  surfaceHover: "rgba(15,23,42,0.07)",
+  border: "rgba(15,23,42,0.12)",
+  textPrimary: "#0f172a",
+  textSecondary: "rgba(15,23,42,0.72)",
+  textMuted: "rgba(15,23,42,0.48)",
+  green: "#047857",
+  greenDim: "rgba(4,120,87,0.10)",
+  greenBorder: "rgba(4,120,87,0.30)",
+  yellow: "#a16207",
+  yellowDim: "rgba(161,98,7,0.10)",
+  yellowBorder: "rgba(161,98,7,0.30)",
+  red: "#b91c1c",
+  redDim: "rgba(185,28,28,0.08)",
+  redBorder: "rgba(185,28,28,0.30)",
+  blue: "#1d4ed8",
+  blueDim: "rgba(29,78,216,0.10)",
+  blueBorder: "rgba(29,78,216,0.30)",
+};
+
+const PaletteContext = createContext<Palette>(DARK_PALETTE);
+const usePalette = () => useContext(PaletteContext);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function safeJson(raw: any): any {
@@ -78,21 +139,21 @@ function safeJson(raw: any): any {
   try { return JSON.parse(raw); } catch { return raw; }
 }
 
-function severityColor(sev: string | undefined) {
+function severityColor(sev: string | undefined, C: Palette) {
   const s = (sev ?? "").toUpperCase();
   if (s === "HIGH" || s === "CRITICAL") return { text: C.red, bg: C.redDim, border: C.redBorder };
   if (s === "MEDIUM") return { text: C.yellow, bg: C.yellowDim, border: C.yellowBorder };
   return { text: C.green, bg: C.greenDim, border: C.greenBorder };
 }
 
-function outcomeColor(outcome: string | undefined) {
+function outcomeColor(outcome: string | undefined, C: Palette) {
   const o = (outcome ?? "").toUpperCase();
   if (o.includes("SUCCESS") || o.includes("ACHIEVED") || o.includes("POSITIVE")) return { text: C.green, bg: C.greenDim, border: C.greenBorder };
   if (o.includes("FAIL") || o.includes("NEGATIVE")) return { text: C.red, bg: C.redDim, border: C.redBorder };
   return { text: C.yellow, bg: C.yellowDim, border: C.yellowBorder };
 }
 
-function scoreColor(score: number, max = 10) {
+function scoreColor(score: number, C: Palette, max = 10) {
   const ratio = score / max;
   if (ratio >= 0.7) return C.green;
   if (ratio >= 0.4) return C.yellow;
@@ -101,6 +162,7 @@ function scoreColor(score: number, max = 10) {
 
 // ─── Primitive components ─────────────────────────────────────────────────────
 function SectionCard({ children, gap = 10 }: { children: React.ReactNode; gap?: number }) {
+  const C = usePalette();
   return (
     <YStack
       backgroundColor={C.surface}
@@ -118,21 +180,21 @@ function SectionCard({ children, gap = 10 }: { children: React.ReactNode; gap?: 
 function SectionHeader({
   icon,
   title,
-  iconColor = C.primary,
-  iconBg = C.primaryDim,
+  iconBg,
 }: {
   icon: React.ReactNode;
   title: string;
   iconColor?: string;
   iconBg?: string;
 }) {
+  const C = usePalette();
   return (
     <XStack alignItems="center" gap={8}>
       <View
         width={26}
         height={26}
         borderRadius={7}
-        backgroundColor={iconBg}
+        backgroundColor={iconBg ?? C.primaryDim}
         alignItems="center"
         justifyContent="center"
       >
@@ -173,7 +235,8 @@ function Pill({
 }
 
 function ScoreBadge({ score, max = 10 }: { score: number; max?: number }) {
-  const color = scoreColor(score, max);
+  const C = usePalette();
+  const color = scoreColor(score, C, max);
   return (
     <XStack alignItems="baseline" gap={2}>
       <Text color={color} fontSize={18} fontWeight="800">{score}</Text>
@@ -183,8 +246,9 @@ function ScoreBadge({ score, max = 10 }: { score: number; max?: number }) {
 }
 
 function ScoreBar({ score, max = 10 }: { score: number; max?: number }) {
+  const C = usePalette();
   const pct = Math.min(100, Math.round((score / max) * 100));
-  const color = scoreColor(score, max);
+  const color = scoreColor(score, C, max);
   return (
     <View height={4} borderRadius={999} backgroundColor={C.border} overflow="hidden">
       <View height={4} width={`${pct}%` as any} borderRadius={999} backgroundColor={color} />
@@ -193,6 +257,7 @@ function ScoreBar({ score, max = 10 }: { score: number; max?: number }) {
 }
 
 function Divider() {
+  const C = usePalette();
   return <View height={1} backgroundColor={C.border} />;
 }
 
@@ -222,8 +287,6 @@ function normalizeBulletItem(item: unknown): { primary: string; secondary?: stri
       (o.note as string) ??
       undefined;
     if (primary) return { primary, secondary };
-    // Fallback — pretty-print the object so we never show
-    // "[object Object]" to the user.
     try {
       return { primary: JSON.stringify(item) };
     } catch {
@@ -234,6 +297,7 @@ function normalizeBulletItem(item: unknown): { primary: string; secondary?: stri
 }
 
 function BulletList({ items }: { items: unknown[] }) {
+  const C = usePalette();
   if (!items?.length) return <Text color={C.textMuted} fontSize={11}>None</Text>;
   return (
     <YStack gap={5}>
@@ -273,6 +337,7 @@ function BulletList({ items }: { items: unknown[] }) {
 }
 
 function Label({ children }: { children: string }) {
+  const C = usePalette();
   return (
     <Text color={C.textMuted} fontSize={10} fontWeight="700" letterSpacing={0.8}>
       {children.toUpperCase()}
@@ -289,9 +354,7 @@ function Label({ children }: { children: string }) {
  * cleanly inside the side panel.
  */
 function ContributorRow({ entry }: { entry: string }) {
-  // "Tania (66c55950) - Product owner/developer..."
-  // Strip the parenthesised id; split the role off whichever separator
-  // the model used ("-", ":" or " — ").
+  const C = usePalette();
   const stripped = entry.replace(/\s*\([^)]*\)\s*/, " ").trim();
   const sepIndex = stripped.search(/\s[-—:]\s/);
   const name = sepIndex > 0 ? stripped.slice(0, sepIndex).trim() : stripped;
@@ -340,6 +403,7 @@ function ContributorRow({ entry }: { entry: string }) {
 }
 
 function MetaChip({ icon, label }: { icon: React.ReactNode; label: string }) {
+  const C = usePalette();
   return (
     <XStack
       alignItems="center"
@@ -367,13 +431,14 @@ function MetaChip({ icon, label }: { icon: React.ReactNode; label: string }) {
 // "Overview" title via the section below.
 
 function SkillsSection({ data }: { data: any }) {
+  const C = usePalette();
   if (!data) return null;
   const outcome = data.outcome ?? data.Outcome;
   const purpose = data.purpose ?? data.Purpose;
   const summary = data.summary ?? data.Summary;
   const keyDecisions: unknown[] = data.key_decisions ?? data["Key Decisions"] ?? [];
 
-  const oc = outcomeColor(outcome);
+  const oc = outcomeColor(outcome, C);
 
   return (
     <SectionCard>
@@ -411,6 +476,7 @@ function SkillsSection({ data }: { data: any }) {
 }
 
 function CommunicationSection({ data }: { data: any }) {
+  const C = usePalette();
   if (!data) return null;
 
   const clarityScore: number = data.clarity_score ?? data["Clarity Score"] ?? 0;
@@ -429,7 +495,7 @@ function CommunicationSection({ data }: { data: any }) {
 
   return (
     <SectionCard>
-      <SectionHeader icon={<MessageSquare size={13} color={C.blue} />} title="Communication" iconColor={C.blue} iconBg={C.blueDim} />
+      <SectionHeader icon={<MessageSquare size={13} color={C.blue} />} title="Communication" iconBg={C.blueDim} />
       <Divider />
 
       {/* Score grid */}
@@ -516,6 +582,7 @@ function CommunicationSection({ data }: { data: any }) {
 }
 
 function TopicsSection({ data }: { data: any }) {
+  const C = usePalette();
   if (!data) return null;
 
   const questionsRaised: string[] = data.questions_raised ?? data["Questions Raised"] ?? [];
@@ -524,7 +591,7 @@ function TopicsSection({ data }: { data: any }) {
 
   return (
     <SectionCard>
-      <SectionHeader icon={<Lightbulb size={13} color={C.yellow} />} title="Key Topics" iconColor={C.yellow} iconBg={C.yellowDim} />
+      <SectionHeader icon={<Lightbulb size={13} color={C.yellow} />} title="Key Topics" iconBg={C.yellowDim} />
       <Divider />
 
       {topicsDiscussed.length > 0 && (
@@ -579,6 +646,7 @@ function TopicsSection({ data }: { data: any }) {
 }
 
 function RedFlagsSection({ data }: { data: any }) {
+  const C = usePalette();
   if (!data) return null;
 
   const actionItems = data.action_items ?? data["Action Items"] ?? {};
@@ -593,11 +661,11 @@ function RedFlagsSection({ data }: { data: any }) {
   const concerns: string[] = risksAndBlockers.concerns ?? risksAndBlockers.Concerns ?? [];
   const overallRisk = risksAndBlockers.overall_risk_level ?? risksAndBlockers["Overall Risk Level"];
 
-  const riskCol = severityColor(overallRisk);
+  const riskCol = severityColor(overallRisk, C);
 
   return (
     <SectionCard>
-      <SectionHeader icon={<ShieldAlert size={13} color={C.red} />} title="Red Flags & Actions" iconColor={C.red} iconBg={C.redDim} />
+      <SectionHeader icon={<ShieldAlert size={13} color={C.red} />} title="Red Flags & Actions" iconBg={C.redDim} />
       <Divider />
 
       {overallRisk && (
@@ -613,7 +681,7 @@ function RedFlagsSection({ data }: { data: any }) {
           {risks.map((risk, i) => {
             const sev = risk.severity ?? risk.Severity;
             const desc = risk.description ?? risk.Description;
-            const col = severityColor(sev);
+            const col = severityColor(sev, C);
             return (
               <XStack key={i} gap={8} alignItems="flex-start" padding={8} borderRadius={8} backgroundColor={col.bg} borderWidth={1} borderColor={col.border}>
                 <View flexShrink={0} marginTop={2}>
@@ -647,7 +715,7 @@ function RedFlagsSection({ data }: { data: any }) {
               const owner = item.owner ?? item.Owner;
               const priority = item.priority ?? item.Priority;
               const deadline = item.deadline ?? item.Deadline;
-              const pc = severityColor(priority);
+              const pc = severityColor(priority, C);
               return (
                 <YStack key={i} gap={5} padding={8} borderRadius={8} backgroundColor={C.surfaceHover} borderWidth={1} borderColor={C.border}>
                   <XStack justifyContent="space-between" alignItems="center" gap={6}>
@@ -734,10 +802,34 @@ function RedFlagsSection({ data }: { data: any }) {
  * (empty / generating / failed / results). Used both by the in-call
  * `InsightsPanel` (with side-panel chrome) and by the meeting detail
  * page's AI Insights card (no chrome).
+ *
+ * Provides the palette context for everything it renders so all
+ * descendants pick up the right light/dark variant automatically.
  */
-export function InsightsContent({ meetingId, interviewId }: ContentProps) {
+export function InsightsContent({ meetingId, interviewId, theme = "dark" }: ContentProps) {
+  const palette = theme === "light" ? LIGHT_PALETTE : DARK_PALETTE;
+  return (
+    <PaletteContext.Provider value={palette}>
+      <InsightsContentInner meetingId={meetingId} interviewId={interviewId} />
+    </PaletteContext.Provider>
+  );
+}
+
+function InsightsContentInner({ meetingId, interviewId }: { meetingId: string | null; interviewId?: string | null }) {
+  const C = usePalette();
   const { data, refetch, loading, error, startPolling, stopPolling } =
     useQuery<GetLatestMeetingInsightResult>(GET_LATEST_MEETING_INSIGHT, {
+      variables: { meetingId },
+      skip: !meetingId,
+      fetchPolicy: "cache-and-network",
+      errorPolicy: "ignore",
+    });
+
+  // Full version history — backs the version switcher in ResultsView.
+  // Fetched lazily (only when meetingId is set) and kept in sync via
+  // the polling cycle below.
+  const { data: historyData, refetch: refetchHistory } =
+    useQuery<GetMeetingInsightsHistoryResult>(GET_MEETING_INSIGHTS_HISTORY, {
       variables: { meetingId },
       skip: !meetingId,
       fetchPolicy: "cache-and-network",
@@ -782,11 +874,22 @@ export function InsightsContent({ meetingId, interviewId }: ContentProps) {
         },
       });
       startPolling(4000);
+      // Pull the freshly-created GENERATING row into the version list
+      // so the switcher reflects the new pending version immediately.
+      void refetchHistory();
     } catch {
       setPendingGenerate(false);
     }
   };
   const onRegenerate = () => onGenerate(true);
+
+  // When polling finishes (status flips to COMPLETED/FAILED), refresh
+  // history so the new version's full content lands in the switcher.
+  useEffect(() => {
+    if (status === "COMPLETED" || status === "FAILED") {
+      void refetchHistory();
+    }
+  }, [status, refetchHistory]);
 
   return (
     <YStack gap={10}>
@@ -799,7 +902,7 @@ export function InsightsContent({ meetingId, interviewId }: ContentProps) {
       )}
 
       {meetingId && error && !insight && !isGenerating && (
-        <ErrorState message={error.message} onRetry={() => void refetch()} />
+        <ErrorState error={error} onRetry={() => void refetch()} />
       )}
 
       {meetingId && !loading && !insight && !isGenerating && (
@@ -813,7 +916,12 @@ export function InsightsContent({ meetingId, interviewId }: ContentProps) {
       )}
 
       {meetingId && insight?.status === "COMPLETED" && (
-        <ResultsView insight={insight} onRegenerate={onRegenerate} regenerating={initializing} />
+        <ResultsView
+          insight={insight}
+          history={historyData?.meetingInsights ?? []}
+          onRegenerate={onRegenerate}
+          regenerating={initializing}
+        />
       )}
     </YStack>
   );
@@ -832,6 +940,27 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
 
   if (!isOpen) return null;
 
+  // The in-call side panel always renders against the dark meeting
+  // room background, so chrome + content both use the dark palette.
+  return (
+    <PaletteContext.Provider value={DARK_PALETTE}>
+      <PanelChrome insight={insight} onClose={onClose}>
+        <InsightsContentInner meetingId={meetingId} interviewId={interviewId} />
+      </PanelChrome>
+    </PaletteContext.Provider>
+  );
+}
+
+function PanelChrome({
+  insight,
+  onClose,
+  children,
+}: {
+  insight: MeetingInsight | null;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const C = usePalette();
   return (
     <YStack
       flex={1}
@@ -839,7 +968,6 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
       borderLeftWidth={1}
       borderColor={C.border}
     >
-      {/* Header */}
       <XStack
         height={56}
         paddingHorizontal={16}
@@ -886,7 +1014,7 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
       </XStack>
 
       <ScrollView flex={1} contentContainerStyle={{ padding: 14, gap: 10 }}>
-        <InsightsContent meetingId={meetingId} interviewId={interviewId} />
+        {children}
       </ScrollView>
     </YStack>
   );
@@ -894,6 +1022,7 @@ export default function InsightsPanel({ meetingId, interviewId, isOpen, onClose 
 
 // ─── State screens ────────────────────────────────────────────────────────────
 function MissingMeetingIdState() {
+  const C = usePalette();
   return (
     <YStack alignItems="center" paddingVertical={40} gap={14}>
       <View width={64} height={64} borderRadius={9999} alignItems="center" justifyContent="center" backgroundColor={C.primaryDim} borderWidth={1} borderColor={C.primaryBorder}>
@@ -910,6 +1039,7 @@ function MissingMeetingIdState() {
 }
 
 function EmptyState({ onGenerate, loading }: { onGenerate: () => void; loading: boolean }) {
+  const C = usePalette();
   return (
     <YStack alignItems="center" paddingVertical={40} gap={16}>
       <View width={72} height={72} borderRadius={9999} alignItems="center" justifyContent="center" backgroundColor={C.primaryDim} borderWidth={1} borderColor={C.primaryBorder}>
@@ -935,6 +1065,7 @@ function EmptyState({ onGenerate, loading }: { onGenerate: () => void; loading: 
 }
 
 function GeneratingState() {
+  const C = usePalette();
   return (
     <YStack alignItems="center" paddingVertical={40} gap={14}>
       <View width={64} height={64} borderRadius={9999} alignItems="center" justifyContent="center" backgroundColor={C.primaryDim} borderWidth={1} borderColor={C.primaryBorder}>
@@ -951,6 +1082,7 @@ function GeneratingState() {
 }
 
 function FailureState({ message, onRetry, retrying }: { message: string | null; onRetry: () => void; retrying: boolean }) {
+  const C = usePalette();
   return (
     <YStack gap={12}>
       <YStack padding={12} gap={6} borderRadius={10} backgroundColor={C.redDim} borderWidth={1} borderColor={C.redBorder}>
@@ -965,13 +1097,10 @@ function FailureState({ message, onRetry, retrying }: { message: string | null; 
   );
 }
 
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorState({ error, onRetry }: { error: ApolloError | Error | null; onRetry: () => void }) {
   return (
     <YStack gap={12}>
-      <XStack padding={10} gap={6} borderRadius={8} backgroundColor={C.redDim} borderWidth={1} borderColor={C.redBorder} alignItems="center">
-        <AlertCircle size={12} color={C.red} />
-        <Text color={C.textSecondary} fontSize={11} flex={1} lineHeight={16}>{message}</Text>
-      </XStack>
+      <ErrorDisplay error={error} title="Couldn't load insight" />
       <TWButton label="Retry" variant="outline" color="primary" size="sm" onPress={onRetry} />
     </YStack>
   );
@@ -980,49 +1109,87 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 // ─── Results view ─────────────────────────────────────────────────────────────
 function ResultsView({
   insight,
+  history,
   onRegenerate,
   regenerating,
 }: {
   insight: MeetingInsight;
+  history: MeetingInsight[];
   onRegenerate: () => void;
   regenerating: boolean;
 }) {
-  const skillsAssessment = safeJson(insight.skillsAssessment);
-  const communicationAnalysis = safeJson(insight.communicationAnalysis);
-  const keyTopicsSummary = safeJson(insight.keyTopicsSummary);
-  const redFlagsAndConcerns = safeJson(insight.redFlagsAndConcerns);
+  const C = usePalette();
+
+  // The "active" version. `null` = follow latest (insight prop). When
+  // the user clicks an older pill, we pin to that id; if they click
+  // the latest pill again we go back to null so a new regenerate
+  // auto-promotes.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Show COMPLETED and STALE versions in the switcher. STALE = a
+  // previously-COMPLETED version that the backend auto-superseded
+  // when a new generation kicked off — its data is still fully
+  // populated and downloadable. FAILED / GENERATING / PENDING rows
+  // have no content, so they stay out of the picker.
+  const completedHistory = history.filter(
+    (v) => v.status === "COMPLETED" || v.status === "STALE",
+  );
+  const displayed =
+    completedHistory.find((v) => v.id === selectedId) ?? insight;
+  const isLatest = displayed.id === insight.id;
+
+  const skillsAssessment = safeJson(displayed.skillsAssessment);
+  const communicationAnalysis = safeJson(displayed.communicationAnalysis);
+  const keyTopicsSummary = safeJson(displayed.keyTopicsSummary);
+  const redFlagsAndConcerns = safeJson(displayed.redFlagsAndConcerns);
 
   return (
     <YStack gap={10}>
+      {/* Version switcher — only shown when more than one COMPLETED
+          version exists. Lets the user flip between regenerations and
+          download whichever one is richest. */}
+      {completedHistory.length > 1 && (
+        <VersionSwitcher
+          versions={completedHistory}
+          activeId={displayed.id}
+          latestId={insight.id}
+          onSelect={(id) => setSelectedId(id === insight.id ? null : id)}
+        />
+      )}
+
       {/* Compact meta + action bar. Generated-at goes first (most
-          glanceable), model name is shortened (the raw bedrock
-          identifier is too long for the panel), char count last. */}
+          glanceable), char count last. */}
       <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={8}>
         <XStack gap={6} flexWrap="wrap" alignItems="center">
-          {insight.generatedAt && (
+          {displayed.generatedAt && (
             <MetaChip
               icon={<Clock size={10} color={C.textMuted} />}
-              label={formatGeneratedAt(insight.generatedAt)}
+              label={formatGeneratedAt(displayed.generatedAt)}
             />
           )}
-          {insight.llmModel && (
-            <MetaChip
-              icon={<Cpu size={10} color={C.textMuted} />}
-              label={shortModelName(insight.llmModel)}
-            />
-          )}
-          {insight.transcriptLength != null && (
+          {displayed.transcriptLength != null && (
             <MetaChip
               icon={<FileText size={10} color={C.textMuted} />}
-              label={`${insight.transcriptLength.toLocaleString()} chars`}
+              label={`${displayed.transcriptLength.toLocaleString()} chars`}
+            />
+          )}
+          {!isLatest && (
+            <MetaChip
+              icon={<RefreshCw size={10} color={C.textMuted} />}
+              label="Viewing older version"
             />
           )}
         </XStack>
-        <XStack gap={6} alignItems="center">
+        <XStack gap={6} alignItems="center" flexWrap="wrap">
           <ActionChip
-            label="Download"
+            label="Download MD"
             icon={<Download size={12} color={C.textPrimary} />}
-            onPress={() => downloadInsightMarkdown(insight)}
+            onPress={() => downloadInsightMarkdown(displayed)}
+          />
+          <ActionChip
+            label="Download PDF"
+            icon={<Download size={12} color={C.textPrimary} />}
+            onPress={() => downloadInsightPdf(displayed)}
           />
           <ActionChip
             label="Regenerate"
@@ -1048,6 +1215,87 @@ function ResultsView({
   );
 }
 
+/**
+ * Horizontal pill row listing all COMPLETED versions of the insight,
+ * newest first. Each pill shows the version number + generated-at
+ * short form; the active one is filled, others are ghosted. Tapping
+ * the currently-active pill is a no-op handled at the parent level
+ * (treated as a select on the latest → unpins to null).
+ */
+function VersionSwitcher({
+  versions,
+  activeId,
+  latestId,
+  onSelect,
+}: {
+  versions: MeetingInsight[];
+  activeId: string;
+  latestId: string;
+  onSelect: (id: string) => void;
+}) {
+  const C = usePalette();
+  return (
+    <YStack gap={6}>
+      <Label>Versions</Label>
+      <XStack gap={6} flexWrap="wrap">
+        {versions.map((v) => {
+          const isActive = v.id === activeId;
+          const isLatest = v.id === latestId;
+          return (
+            <Pressable
+              key={v.id}
+              onPress={() => onSelect(v.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Version ${v.version}`}
+              style={({ pressed, hovered }: any) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                height: 26,
+                paddingHorizontal: 10,
+                borderRadius: 6,
+                borderWidth: 1,
+                borderColor: isActive ? C.primaryBorder : C.border,
+                backgroundColor: isActive
+                  ? C.primaryDim
+                  : pressed || hovered
+                    ? C.surfaceHover
+                    : C.surface,
+              })}
+            >
+              <Text
+                color={isActive ? C.primary : C.textPrimary}
+                fontSize={11}
+                fontWeight="700"
+              >
+                v{v.version}
+              </Text>
+              {isLatest && (
+                <Text
+                  color={isActive ? C.primary : C.textMuted}
+                  fontSize={9}
+                  fontWeight="600"
+                  letterSpacing={0.6}
+                >
+                  LATEST
+                </Text>
+              )}
+              {v.generatedAt && (
+                <Text
+                  color={isActive ? C.primary : C.textMuted}
+                  fontSize={10}
+                >
+                  · {formatGeneratedAt(v.generatedAt)}
+                </Text>
+              )}
+            </Pressable>
+          );
+        })}
+      </XStack>
+    </YStack>
+  );
+}
+
 /** "01/06/2026, 10:40:55" is hard to scan — collapse to "Jun 1, 10:40". */
 function formatGeneratedAt(iso: string): string {
   try {
@@ -1061,22 +1309,6 @@ function formatGeneratedAt(iso: string): string {
   } catch {
     return iso;
   }
-}
-
-/**
- * Bedrock returns the model as `eu.anthropic.claude-haiku-4-5-20251001-v1:0`,
- * which dominates the meta row. Trim to the recognizable family + version.
- */
-function shortModelName(raw: string): string {
-  // Strip region prefix + provider segment.
-  const tail = raw.split(/[./]/).pop() ?? raw;
-  const m = tail.match(/claude-([a-z]+)-(\d+)-(\d+)/i);
-  if (m) {
-    const family = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
-    return `Claude ${family} ${m[2]}.${m[3]}`;
-  }
-  // Fallback: take the last segment minus any trailing -date / -version.
-  return tail.replace(/-\d{8}.*$/, "").replace(/-v\d+:?\d*$/, "");
 }
 
 /**
@@ -1102,11 +1334,12 @@ function ActionChip({
   disabled?: boolean;
   variant?: "primary" | "neutral";
 }) {
+  const C = usePalette();
   const isPrimary = variant === "primary";
   const palette = isPrimary
     ? {
         bg: C.primaryDim,
-        hoverBg: "rgba(112,145,230,0.28)",
+        hoverBg: C.primaryHoverDim,
         border: C.primaryBorder,
         text: C.primary,
       }
@@ -1197,4 +1430,243 @@ function buildFallbackMarkdown(insight: MeetingInsight): string {
   push("Key Topics", insight.keyTopicsSummary);
   push("Red Flags & Concerns", insight.redFlagsAndConcerns);
   return lines.join("\n");
+}
+
+/**
+ * Web-only: render the insight's markdown report as styled HTML in a
+ * new window and trigger the browser's print dialog so the user can
+ * Save as PDF. Zero-dependency approach — no jsPDF/pdfmake bundle
+ * hit. The native Print dialog lets the user pick the destination
+ * and filename. Markdown-to-HTML uses a tiny inline parser that
+ * covers what bg-tasks emits: ATX headers, bullets (incl. nested),
+ * **bold**, *italic*, blockquotes, tables, horizontal rules.
+ */
+function downloadInsightPdf(insight: MeetingInsight) {
+  if (Platform.OS !== "web" || typeof document === "undefined") return;
+  const md = insight.fullReport && insight.fullReport.trim().length > 0
+    ? insight.fullReport
+    : buildFallbackMarkdown(insight);
+  const body = markdownToHtml(md);
+  const title = `Meeting Insight v${insight.version}`;
+  const meta = insight.generatedAt
+    ? `Generated ${new Date(insight.generatedAt).toLocaleString()} · v${insight.version}`
+    : `v${insight.version}`;
+  printHtmlInIframe(buildPrintableHtml(title, meta, body));
+}
+
+/**
+ * Wraps a body fragment with the page chrome we use for printed
+ * insight + transcript exports. Centralised here so both downloads
+ * share the same look.
+ */
+function buildPrintableHtml(title: string, meta: string, bodyHtml: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>${escapeHtml(title)}</title>
+<style>
+  @page { margin: 20mm 18mm; }
+  html, body { background: #fff; color: #0f172a; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    font-size: 11pt; line-height: 1.55;
+    max-width: 760px; margin: 0 auto; padding: 24px;
+  }
+  h1 { font-size: 22pt; margin: 0 0 12px; }
+  h2 { font-size: 15pt; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; }
+  h3 { font-size: 12pt; margin: 16px 0 6px; color: #334155; }
+  p { margin: 6px 0; }
+  ul, ol { margin: 4px 0 8px; padding-left: 22px; }
+  li { margin: 2px 0; }
+  li > ul, li > ol { margin: 2px 0; }
+  strong { color: #0f172a; }
+  em { color: #475569; }
+  blockquote {
+    border-left: 3px solid #94a3b8; margin: 8px 0;
+    padding: 4px 12px; color: #475569; background: #f8fafc;
+    font-style: italic;
+  }
+  hr { border: 0; border-top: 1px solid #e2e8f0; margin: 18px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 14px; font-size: 10pt; }
+  th, td { border: 1px solid #cbd5e1; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f5f9; font-weight: 600; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-size: 90%; }
+  pre {
+    white-space: pre-wrap; word-break: break-word;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10pt; line-height: 1.5;
+    margin: 0;
+  }
+  .meta { color: #64748b; font-size: 10pt; margin-bottom: 18px; }
+  @media print {
+    body { padding: 0; }
+    h2 { page-break-after: avoid; }
+    tr, li, blockquote { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<h1>${escapeHtml(title)}</h1>
+<div class="meta">${escapeHtml(meta)}</div>
+${bodyHtml}
+</body>
+</html>`;
+}
+
+/**
+ * Renders printable HTML into a hidden iframe and triggers the
+ * browser's print dialog. Switched from `window.open` because Chrome
+ * refused to fire scripts in `document.write`d about:blank windows —
+ * the tab opened blank with no print dialog. An iframe is more
+ * reliable: same origin, srcdoc loads synchronously, `load` fires
+ * deterministically.
+ */
+export function printHtmlInIframe(html: string) {
+  if (Platform.OS !== "web" || typeof document === "undefined") return;
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.srcdoc = html;
+  iframe.onload = () => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch (err) {
+      // Surface in console — the print() call should rarely throw
+      // outside of cross-origin restrictions (not our case here).
+      // eslint-disable-next-line no-console
+      console.error("[insights] print failed", err);
+    }
+    // Some browsers fire `afterprint` on the iframe, some don't.
+    // Use a longer-than-the-dialog timeout fallback so the iframe is
+    // always removed eventually.
+    const cleanup = () => {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    };
+    iframe.contentWindow?.addEventListener("afterprint", cleanup);
+    setTimeout(cleanup, 60_000);
+  };
+  document.body.appendChild(iframe);
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Tiny markdown → HTML converter scoped to what the bg-tasks pipeline
+ * emits. Not a general markdown engine — keep additions narrow to
+ * what `fullReport` actually contains. Inline patterns (bold / italic
+ * / code) are applied per-line after block parsing so they work
+ * inside list items + table cells.
+ */
+function markdownToHtml(md: string): string {
+  const lines = md.replace(/\r\n/g, "\n").split("\n");
+  const out: string[] = [];
+  // Track open block contexts so we close them when the block ends.
+  let ulDepth = 0;
+  let inQuote = false;
+  let inTable = false;
+
+  const closeUl = () => {
+    while (ulDepth > 0) {
+      out.push("</ul>");
+      ulDepth--;
+    }
+  };
+  const closeQuote = () => {
+    if (inQuote) {
+      out.push("</blockquote>");
+      inQuote = false;
+    }
+  };
+  const closeTable = () => {
+    if (inTable) {
+      out.push("</tbody></table>");
+      inTable = false;
+    }
+  };
+  const closeAll = () => { closeUl(); closeQuote(); closeTable(); };
+
+  const inline = (s: string) =>
+    escapeHtml(s)
+      // bold
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      // italic — apply after bold so the **...** isn't eaten as *.*
+      .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>")
+      // inline code
+      .replace(/`([^`]+)`/g, "<code>$1</code>");
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.trimEnd();
+    // Horizontal rule
+    if (/^---+\s*$/.test(line)) { closeAll(); out.push("<hr/>"); continue; }
+    // Blank line — closes most blocks, paragraph break otherwise
+    if (line.trim() === "") { closeAll(); continue; }
+    // Headers
+    const h = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (h) {
+      closeAll();
+      const level = h[1].length;
+      out.push(`<h${level}>${inline(h[2])}</h${level}>`);
+      continue;
+    }
+    // Blockquote
+    if (/^>\s?/.test(line)) {
+      closeUl(); closeTable();
+      if (!inQuote) { out.push("<blockquote>"); inQuote = true; }
+      out.push(`<p>${inline(line.replace(/^>\s?/, ""))}</p>`);
+      continue;
+    }
+    closeQuote();
+    // Table — detect header row by next line being |---|---|
+    const isTableRow = /^\|.*\|\s*$/.test(line);
+    const next = lines[i + 1] ?? "";
+    const isSeparatorAhead = /^\s*\|?\s*[-:]+(\s*\|\s*[-:]+)+\s*\|?\s*$/.test(next);
+    if (isTableRow && !inTable && isSeparatorAhead) {
+      closeUl();
+      out.push("<table><thead><tr>");
+      const cells = line.split("|").slice(1, -1).map((c) => c.trim());
+      for (const c of cells) out.push(`<th>${inline(c)}</th>`);
+      out.push("</tr></thead><tbody>");
+      inTable = true;
+      i++; // skip the separator
+      continue;
+    }
+    if (isTableRow && inTable) {
+      out.push("<tr>");
+      const cells = line.split("|").slice(1, -1).map((c) => c.trim());
+      for (const c of cells) out.push(`<td>${inline(c)}</td>`);
+      out.push("</tr>");
+      continue;
+    }
+    closeTable();
+    // Bullet list (with optional 2-space indent for nesting)
+    const bullet = /^(\s*)[-*]\s+(.*)$/.exec(raw);
+    if (bullet) {
+      const indent = bullet[1].length;
+      const depth = Math.min(3, 1 + Math.floor(indent / 2));
+      while (ulDepth < depth) { out.push("<ul>"); ulDepth++; }
+      while (ulDepth > depth) { out.push("</ul>"); ulDepth--; }
+      out.push(`<li>${inline(bullet[2])}</li>`);
+      continue;
+    }
+    closeUl();
+    // Default: paragraph
+    out.push(`<p>${inline(line)}</p>`);
+  }
+  closeAll();
+  return out.join("\n");
 }

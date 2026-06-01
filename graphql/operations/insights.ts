@@ -33,6 +33,34 @@ export const GET_LATEST_MEETING_INSIGHT = gql`
   }
 `;
 
+/**
+ * All versions of a meeting's insight, newest first. Powers the
+ * version switcher in the detail page so the user can flip back to
+ * an earlier (richer) version when a regenerate produces a partial
+ * result.
+ */
+export const GET_MEETING_INSIGHTS_HISTORY = gql`
+  query GetMeetingInsightsHistory($meetingId: ID!) {
+    meetingInsights(meetingId: $meetingId) {
+      id
+      version
+      status
+      fullReport
+      skillsAssessment
+      communicationAnalysis
+      keyTopicsSummary
+      redFlagsAndConcerns
+      generatedAt
+      transcriptLength
+      llmModel
+      llmTokensUsed
+      processingTimeMs
+      errorMessage
+      createdAt
+    }
+  }
+`;
+
 export const INITIALIZE_MEETING_INSIGHT = gql`
   mutation InitializeMeetingInsight($input: GenerateMeetingInsightInput!) {
     initializeMeetingInsight(input: $input) {
@@ -74,6 +102,10 @@ export interface MeetingInsight {
 
 export interface GetLatestMeetingInsightResult {
   latestMeetingInsight: MeetingInsight | null;
+}
+
+export interface GetMeetingInsightsHistoryResult {
+  meetingInsights: MeetingInsight[];
 }
 
 export interface InitializeMeetingInsightResult {
