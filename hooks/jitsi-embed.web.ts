@@ -135,7 +135,7 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
   let isTranscribing = false;
   let areCaptionsVisible = false;
   let isBlurEnabled = false;
-  let isNoiseSuppressionOn = false;
+  let isNoiseSuppressionOn = true;
   const transcriptionTimers: Array<ReturnType<typeof setTimeout>> = [];
   const parent = args.container;
   const clearTranscriptionTimers = () => {
@@ -304,6 +304,9 @@ export function createJitsiEmbed(args: CreateJitsiEmbedWebArgs): JitsiEmbedHandl
             hideConferenceTimer: true,
             hideParticipantsStats: true,
             startInTileView: true,
+            noiseSuppression: {
+              enabled: true,
+            },
             // Standard selfie mirror: when the user raises their right
             // hand it appears on the right side of their self-view, the
             // way Teams / Meet / Zoom render it. Forced via

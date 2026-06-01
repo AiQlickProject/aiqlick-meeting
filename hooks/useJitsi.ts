@@ -27,7 +27,7 @@ const INITIAL: JitsiState = {
   isParticipantsOpen: false,
   isHandRaised: false,
   isBlurEnabled: false,
-  isNoiseSuppressionOn: false,
+  isNoiseSuppressionOn: true,
   isRecording: false,
   networkQuality: "unknown",
   participantCount: 1,

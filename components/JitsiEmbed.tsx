@@ -46,6 +46,9 @@ const NativeMeeting = forwardRef<NativeJitsiRef, NativeJitsiMeetingProps>(
           hideConferenceTimer: true,
           hideParticipantsStats: true,
           startInTileView: true,
+          noiseSuppression: {
+            enabled: true,
+          },
           transcription: {
             enabled: true,
             autoStartTranscription: true,
