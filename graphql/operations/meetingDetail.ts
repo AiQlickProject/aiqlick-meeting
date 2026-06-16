@@ -69,6 +69,17 @@ export const GET_MEETING_BY_ID = gql`
           profileImageUrl
         }
       }
+      # The backend's `initializeMeetingInsight` mutation expects
+      # `interviewId` to be an `Interview.id`, NOT an
+      # `InterviewBooking.id`. We previously passed
+      # `meeting.interviewBookingId` directly, which 404'd with
+      # "Interview not found" on every regenerate of an
+      # interview-linked meeting. Fetch the real `Interview.id`
+      # via the booking relation so the mutation works.
+      interviewBooking {
+        id
+        interviewId
+      }
     }
   }
 `;
@@ -107,6 +118,16 @@ export interface MeetingDetail {
       profileImageUrl: string | null;
     } | null;
   }>;
+  /**
+   * The InterviewBooking row this meeting is linked to (null for
+   * general/ad-hoc meetings). We need `interviewId` from it because
+   * the backend's `initializeMeetingInsight` mutation validates
+   * `Interview.id`, not `InterviewBooking.id`.
+   */
+  interviewBooking: {
+    id: string;
+    interviewId: string;
+  } | null;
 }
 
 export interface MeetingDetailResult {

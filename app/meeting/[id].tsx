@@ -171,7 +171,14 @@ function Inner() {
                 <AttendeesCard meeting={meeting} isOrganizer={isOrganizer} />
                 <InsightsSection
                   meetingId={meeting.id}
-                  interviewId={meeting.interviewBookingId}
+                  // The backend mutation expects the real Interview UUID,
+                  // not the InterviewBooking UUID. Passing `interviewBookingId`
+                  // here was the source of the HTTP 404 "Interview not found"
+                  // error on every regenerate for interview-linked meetings —
+                  // the booking row's id is a different entity than the
+                  // interview row's id. Resolve via the nested relation
+                  // (now in the GET_MEETING_BY_ID selection set).
+                  interviewId={meeting.interviewBooking?.interviewId ?? null}
                   roomName={meeting.roomName}
                   organizerName={
                     meeting.organizer
