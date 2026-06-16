@@ -69,12 +69,12 @@ export const GET_MEETING_BY_ID = gql`
           profileImageUrl
         }
       }
-      # The backend's `initializeMeetingInsight` mutation expects
-      # `interviewId` to be an `Interview.id`, NOT an
-      # `InterviewBooking.id`. We previously passed
-      # `meeting.interviewBookingId` directly, which 404'd with
+      # The backend initializeMeetingInsight mutation expects
+      # interviewId to be an Interview.id, NOT an
+      # InterviewBooking.id. We previously passed
+      # meeting.interviewBookingId directly, which 404'd with
       # "Interview not found" on every regenerate of an
-      # interview-linked meeting. Fetch the real `Interview.id`
+      # interview-linked meeting. Fetch the real Interview.id
       # via the booking relation so the mutation works.
       interviewBooking {
         id
