@@ -10,13 +10,26 @@ import { readItem, writeItem } from "@/lib/storage";
  *
  *   - "pending"   — joined but hasn't been asked yet
  *   - "consented" — explicit yes
- *   - "declined"  — explicit no; mute is enforced
+ *   - "declined"  — explicit no
  *
  * Stored under `aiqlick:meeting-consent:<roomName>` so re-joining
  * the same room within the same browser session doesn't re-prompt.
  * A fresh tab / cleared storage re-prompts — that matches the
  * legal expectation that consent is given at the start of each
  * session, not "remembered forever."
+ *
+ * **No mic-mute enforcement.** This used to force-mute users who
+ * declined, and re-mute them whenever they tried to unmute. In
+ * practice that silenced participants whose audio was needed for
+ * the actual meeting — most painfully, candidates in interviews
+ * whose voice never reached Jigasi. The transcript came out near
+ * empty and the AI insights produced garbage from 100 chars of
+ * mic-check chatter.
+ *
+ * Now the hook only records the consent choice (for compliance /
+ * audit trail) and exposes it via `status`. The modal still shows;
+ * declining still writes "declined" to storage; but the user's
+ * mic state is left entirely under their own control.
  */
 export type ConsentStatus = "pending" | "consented" | "declined";
 
@@ -26,27 +39,14 @@ interface UseMeetingConsentArgs {
   roomName: string | null | undefined;
   /** From `useJitsi().state.isJoined`. */
   isJoined: boolean;
-  /** From `useJitsi().state.isAudioMuted`. */
-  isAudioMuted: boolean;
-  /** From `useJitsi().commands.toggleAudio`. Called when consent is
-   * declined and the local user is currently unmuted, to push them
-   * back to mute. */
-  toggleAudio: () => void;
 }
 
 export function useMeetingConsent({
   roomName,
   isJoined,
-  isAudioMuted,
-  toggleAudio,
 }: UseMeetingConsentArgs) {
   const [status, setStatus] = useState<ConsentStatus | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  // Tracks "we just re-prompted because the user tried to unmute while
-  // their stored answer was declined." If they now agree, we'll
-  // restore the unmute they originally wanted instead of leaving
-  // them silently muted.
-  const [reaskFromUnmute, setReaskFromUnmute] = useState(false);
 
   const storageKey = roomName ? `${STORAGE_PREFIX}${roomName}` : null;
 
@@ -69,22 +69,6 @@ export function useMeetingConsent({
     };
   }, [isJoined, storageKey]);
 
-  // Declined-state enforcement: if the user toggles their mic on
-  // (Jitsi flips isAudioMuted to false), interpret that as a "I want
-  // to change my mind" signal — force-mute them immediately so no
-  // audio leaks, and re-prompt with the consent modal. They can:
-  //   - Agree → we restore the unmute they wanted (see setConsent).
-  //   - Decline → status stays declined, mic stays muted.
-  // toggleAudio is a toggle (not a setter), so we only fire it when
-  // they're currently unmuted.
-  useEffect(() => {
-    if (status === "declined" && !isAudioMuted) {
-      toggleAudio();
-      setReaskFromUnmute(true);
-      setStatus("pending");
-    }
-  }, [status, isAudioMuted, toggleAudio]);
-
   const setConsent = useCallback(
     async (consent: boolean) => {
       const next: ConsentStatus = consent ? "consented" : "declined";
@@ -92,20 +76,13 @@ export function useMeetingConsent({
       if (storageKey) {
         await writeItem(storageKey, next);
       }
-      // If we got here from an unmute-attempt re-prompt and the user
-      // now agrees, restore the unmute they were trying to do. Their
-      // mic is currently force-muted because of the re-ask flow.
-      if (reaskFromUnmute && consent) {
-        toggleAudio();
-      }
-      setReaskFromUnmute(false);
     },
-    [storageKey, reaskFromUnmute, toggleAudio],
+    [storageKey],
   );
 
-  /** Re-open the consent prompt (used by the "Change my mind" link). */
+  /** Re-open the consent prompt (e.g., the user wants to revise
+   * their earlier answer after the meeting has started). */
   const reopenPrompt = useCallback(() => {
-    setReaskFromUnmute(false);
     setStatus("pending");
   }, []);
 

@@ -1,4 +1,4 @@
-import { Brain, MicOff, Sparkles } from "@tamagui/lucide-icons";
+import { Brain, Sparkles, X } from "@tamagui/lucide-icons";
 import { View, XStack, YStack, Text } from "tamagui";
 
 import { TWButton } from "@/components/ux/TWButton";
@@ -23,13 +23,20 @@ interface Props {
  *
  * The meeting transcript is captured and analysed by AI to produce
  * meeting insights (summaries, action items, etc.). That's a clear
- * privacy event for the speaker, so we ask before letting them
- * unmute — they can stay muted and still see/hear the meeting if
- * they decline.
+ * privacy event for the speaker, so we surface the notice and
+ * record their answer.
  *
- * The modal is intentionally non-dismissable (no backdrop / X
- * close): the user has to make a choice, because either choice
- * is a deliberate decision about their voice data.
+ * **Does not technically mute anyone.** A previous version of this
+ * flow force-muted users who declined, and re-muted them whenever
+ * they tried to unmute. That silenced participants whose audio
+ * was needed for the actual meeting (notably a candidate in an
+ * interview on 2026-06-16 whose voice never reached Jigasi).
+ * The choice is now informational — recorded for compliance, but
+ * the user remains in full control of their mic.
+ *
+ * The modal is non-dismissable (no backdrop / X close) so the
+ * consent is a deliberate choice rather than something the user
+ * can ignore by clicking away.
  */
 export function MeetingConsentModal({ isOpen, onAgree, onDecline }: Props) {
   return (
@@ -62,11 +69,11 @@ export function MeetingConsentModal({ isOpen, onAgree, onDecline }: Props) {
       footer={
         <>
           <TWButton
-            label="Stay muted"
+            label="I do not consent"
             variant="ghost"
             color="default"
             size="md"
-            icon={<MicOff size={14} color={aiqlickTokens.gray700} />}
+            icon={<X size={14} color={aiqlickTokens.gray700} />}
             onPress={onDecline}
           />
           <TWButton
@@ -87,9 +94,9 @@ export function MeetingConsentModal({ isOpen, onAgree, onDecline }: Props) {
           action items, key discussion points, and similar.
         </Text>
         <Text color={aiqlickTokens.gray700} fontSize={13} lineHeight={20}>
-          To take part in the conversation, you'll need to agree. If you
-          prefer not to, you can stay muted and still see and hear the
-          meeting; you just won't be able to speak.
+          We'll record your answer for our compliance log. If you do
+          not consent, your audio still works — please remain quiet
+          or mute yourself so your voice isn't transcribed.
         </Text>
       </YStack>
 
@@ -106,7 +113,7 @@ export function MeetingConsentModal({ isOpen, onAgree, onDecline }: Props) {
         </Text>
         <BulletRow text="Your voice is recorded as text for the transcript." />
         <BulletRow text="An AI model reads the transcript to produce insights." />
-        <BulletRow text="You can change your mind during the meeting via the consent banner." />
+        <BulletRow text="Your choice here is logged once per room, per browser." />
       </YStack>
     </TWModal>
   );
